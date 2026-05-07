@@ -1,7 +1,10 @@
 {
   "manifest_version": 3,
+
   "name": "ShadowLink",
+
   "version": "1.0.0",
+
   "description": "AI-powered phishing detection browser extension.",
 
   "permissions": [
@@ -26,7 +29,15 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": [
+  "rules/constants.js",
+  "rules/homoglyph.js",
+  "rules/urlAnalyzer.js",
+  "rules/loginDetector.js",
+  "rules/scoring.js",
+  "ui/warningBanner.js",
+  "content.js"
+]
     }
   ]
 }
