@@ -14,7 +14,10 @@ function levenshtein(a, b) {
 
     for (let j = 1; j <= a.length; j++) {
 
-      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+      if (
+        b.charAt(i - 1) ===
+        a.charAt(j - 1)
+      ) {
 
         matrix[i][j] =
           matrix[i - 1][j - 1];
@@ -32,34 +35,42 @@ function levenshtein(a, b) {
 
   return matrix[b.length][a.length];
 }
+function normalizeDomain(domain) {
 
-function detectHomoglyph(domain, trustedDomains) {
+  return domain
+    .replace(/0/g, "o")
+    .replace(/1/g, "l")
+    .replace(/3/g, "e")
+    .replace(/5/g, "s")
+    .replace(/7/g, "t")
+    .replace(/@/g, "a")
+    .replace(/\$/g, "s");
+}
+function detectHomoglyph(
+  domain,
+  trustedDomains
+) {
 
   let suspiciousMatches = [];
 
   trustedDomains.forEach(trusted => {
 
-    const distance =
-      levenshtein(domain, trusted);
+    const normalizedDomain =
+  normalizeDomain(domain);
 
-    console.log(
-    "Testing:",
-      domain,
-      trusted,
-      "distance:",
-      distance
-    );
+const normalizedTrusted =
+  normalizeDomain(trusted);
 
-    console.log({
-  domain,
-  trusted,
-  distance
-});
+const distance =
+  levenshtein(
+    normalizedDomain,
+    normalizedTrusted
+  );
 
     if (
-      distance > 0 &&
-      distance <= 2
-    ) {
+  distance > 0 &&
+  distance <= Math.ceil(trusted.length / 2)
+) {
 
       suspiciousMatches.push(trusted);
     }

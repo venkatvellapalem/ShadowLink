@@ -1,10 +1,10 @@
 function classifyThreat(score) {
 
-  if (score >= 60) {
+  if (score >= 50) {
     return "Dangerous";
   }
 
-  if (score >= 30) {
+  if (score >= 25) {
     return "Suspicious";
   }
 

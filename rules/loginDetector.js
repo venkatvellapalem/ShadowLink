@@ -5,6 +5,15 @@ function detectLoginForms() {
 
   let indicators = [];
 
+  const currentHostname =
+    window.location.hostname
+      .replace("www.", "");
+
+  const isTrusted =
+    trustedDomains.some(domain =>
+      currentHostname.includes(domain)
+    );
+
   forms.forEach(form => {
 
     const passwordInputs =
@@ -14,18 +23,22 @@ function detectLoginForms() {
 
     if (passwordInputs.length > 0) {
 
-      indicators.push(
-        "Password input field detected"
-      );
-
-      const action =
-        form.getAttribute("action");
-
-      if (!action || action === "") {
+      // ONLY FLAG if NOT trusted
+      if (!isTrusted) {
 
         indicators.push(
-          "Form action is suspicious or missing"
+          "Password input field detected"
         );
+
+        const action =
+          form.getAttribute("action");
+
+        if (!action || action === "") {
+
+          indicators.push(
+            "Form action is suspicious or missing"
+          );
+        }
       }
     }
   });

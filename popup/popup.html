@@ -2,17 +2,89 @@
 <html>
 
 <head>
+
   <meta charset="UTF-8">
+
   <title>ShadowLink</title>
+
   <link rel="stylesheet" href="popup.css">
+
 </head>
 
 <body>
 
-  <h1>ShadowLink</h1>
-  <p>Phishing Detection Active</p>
+  <div class="container">
+
+    <h1>ShadowLink</h1>
+
+    <div class="status">
+      Protection Active
+    </div>
+
+    <div class="card">
+
+      <div class="label">
+        Current Site
+      </div>
+
+      <div id="site">
+        Loading...
+      </div>
+
+    </div>
+
+    <div class="card">
+
+      <div class="label">
+        Threat Level
+      </div>
+
+      <div id="threatLevel">
+        Safe
+      </div>
+
+    </div>
+
+    <div class="card">
+
+      <div class="label">
+        Risk Score
+      </div>
+
+      <div id="riskScore">
+        0
+      </div>
+
+    </div>
+
+    <div class="card">
+
+      <div class="label">
+        Indicators
+      </div>
+
+      <div id="indicators">
+        None
+      </div>
+
+    </div>
+
+    <div class="card">
+
+      <div class="label">
+        Recent Threats
+      </div>
+
+      <div id="history">
+        No threats detected.
+      </div>
+
+    </div>
+
+  </div>
 
   <script src="popup.js"></script>
+
 </body>
 
 </html>

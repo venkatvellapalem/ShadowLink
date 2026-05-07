@@ -26,7 +26,9 @@ function analyzeURL(url) {
 
   suspiciousKeywords.forEach(keyword => {
 
-    if (url.toLowerCase().includes(keyword)) {
+    if (
+      url.toLowerCase().includes(keyword)
+    ) {
 
       score += 10;
 
@@ -37,34 +39,25 @@ function analyzeURL(url) {
   });
 
   const currentDomain =
-  window.location.hostname
-    .replace("www.", "")
-    .split(".")[0];
-console.log("Current Domain:", currentDomain);
-const homoglyphMatches =
-  detectHomoglyph(
-    currentDomain,
-    trustedDomains
-  );
+    window.location.hostname
+      .replace("www.", "")
+      .split(".")[0];
 
-console.log(
-  "Homoglyph Matches:",
-  homoglyphMatches
-);
-console.log({
-  domain,
-  trusted,
-  distance
-});
+  const homoglyphMatches =
+    detectHomoglyph(
+      currentDomain,
+      trustedDomains
+    );
 
-if (homoglyphMatches.length > 0) {
+  if (homoglyphMatches.length > 0) {
 
-  score += 40;
+    score += 60;
 
-  indicators.push(
-    `Possible homoglyph attack targeting: ${homoglyphMatches.join(", ")}`
-  );
-}
+    indicators.push(
+      `Possible homoglyph attack targeting: ${homoglyphMatches.join(", ")}`
+    );
+  }
+
   return {
     score,
     indicators
