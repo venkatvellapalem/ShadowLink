@@ -1,12 +1,12 @@
 const trustedDomains = [
-  "google.com",
-  "paypal.com",
-  "amazon.com",
-  "facebook.com",
-  "instagram.com",
-  "github.com",
-  "apple.com",
-  "microsoft.com"
+  "google",
+  "paypal",
+  "amazon",
+  "facebook",
+  "instagram",
+  "github",
+  "apple",
+  "microsoft"
 ];
 
 const suspiciousTLDs = [

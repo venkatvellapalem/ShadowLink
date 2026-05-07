@@ -50,9 +50,15 @@ function detectHomoglyph(domain, trustedDomains) {
       distance
     );
 
+    console.log({
+  domain,
+  trusted,
+  distance
+});
+
     if (
       distance > 0 &&
-      distance <= 3
+      distance <= 2
     ) {
 
       suspiciousMatches.push(trusted);

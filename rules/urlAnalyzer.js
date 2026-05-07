@@ -38,7 +38,8 @@ function analyzeURL(url) {
 
   const currentDomain =
   window.location.hostname
-    .replace("www.", "");
+    .replace("www.", "")
+    .split(".")[0];
 console.log("Current Domain:", currentDomain);
 const homoglyphMatches =
   detectHomoglyph(
@@ -50,6 +51,11 @@ console.log(
   "Homoglyph Matches:",
   homoglyphMatches
 );
+console.log({
+  domain,
+  trusted,
+  distance
+});
 
 if (homoglyphMatches.length > 0) {
 
