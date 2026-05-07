@@ -4,7 +4,6 @@ const trustedDomains = [
   "amazon",
   "facebook",
   "instagram",
-  "github",
   "apple",
   "microsoft"
 ];

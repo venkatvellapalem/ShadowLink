@@ -1,6 +1,8 @@
 function showDangerOverlay(result) {
 
-  if (result.threatLevel !== "Dangerous") {
+  if (
+  result.score < 50
+) {
     return;
   }
 

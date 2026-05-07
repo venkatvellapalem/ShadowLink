@@ -15,7 +15,9 @@
   ],
 
   "host_permissions": [
-    "<all_urls>"
+    "<all_urls>",
+    "https://*/*",
+  "http://*/*"
   ],
 
   "background": {
@@ -30,8 +32,11 @@
     {
       "matches": ["<all_urls>"],
       "js": [
+"rules/scoring.js",
+"core/threatEngine.js",
   "rules/constants.js",
   "rules/homoglyph.js",
+  "rules/virusTotalCheck.js",
   "rules/urlAnalyzer.js",
   "rules/loginDetector.js",
   "rules/scoring.js",
