@@ -1,0 +1,1 @@
+console.log("ShadowTrace background running...");
