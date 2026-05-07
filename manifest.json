@@ -34,6 +34,7 @@
       "js": [
 "rules/scoring.js",
 "core/threatEngine.js",
+"ui/alertUI.js",
   "rules/constants.js",
   "rules/homoglyph.js",
   "rules/virusTotalCheck.js",
@@ -41,7 +42,6 @@
   "rules/loginDetector.js",
   "rules/scoring.js",
   "ui/warningBanner.js",
-  "ui/dangerOverlay.js",
   "storage/history.js",
   "content.js"
 ]

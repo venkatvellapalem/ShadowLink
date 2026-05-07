@@ -1,3 +1,4 @@
+/*
 function showDangerOverlay(result) {
 
   if (
@@ -93,3 +94,4 @@ function showDangerOverlay(result) {
       overlay.remove();
     });
 }
+*/
