@@ -176,6 +176,47 @@ function showThreatPopup(result) {
   document.body.appendChild(
     popup
   );
+  if (
+
+  result.threatLevel ===
+  "Dangerous"
+
+) {
+
+  popup.animate(
+
+    [
+
+      {
+        transform:
+          "translateX(-4px)"
+      },
+
+      {
+        transform:
+          "translateX(4px)"
+      },
+
+      {
+        transform:
+          "translateX(-4px)"
+      },
+
+      {
+        transform:
+          "translateX(0px)"
+      }
+
+    ],
+
+    {
+
+      duration: 300,
+
+      iterations: 2
+    }
+  );
+}
 
   document.getElementById(
     "shadowlink-close"
@@ -192,18 +233,28 @@ function showThreatPopup(result) {
   };
 
   /*
-    Auto-hide for orange
-  */
+  Auto-hide popup
+*/
 
-  if (
-    result.threatLevel ===
-    "Suspicious"
-  ) {
+if (
 
-    setTimeout(() => {
+  result.threatLevel ===
+  "Suspicious"
+
+  ||
+
+  result.threatLevel ===
+  "Dangerous"
+
+) {
+
+  setTimeout(() => {
+
+    if (popup) {
 
       popup.remove();
+    }
 
-    }, 7000);
-  }
+  }, 8000);
+}
 }

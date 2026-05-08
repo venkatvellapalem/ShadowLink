@@ -5,7 +5,7 @@ async function checkVirusTotal(url) {
     const response =
       await fetch(
 
-        `https://shadowlink-api.onrender.com/check?url=${encodeURIComponent(url)}`
+        `https://shadowlink-api.vercel.app/api/check?url=${encodeURIComponent(url)}`
 
       );
 
@@ -17,10 +17,14 @@ async function checkVirusTotal(url) {
       data
     );
 
-    const stats =
-      data.data.attributes.stats;
+    return {
 
-    return stats;
+      stats:
+        data.vt.data.attributes.stats,
+
+      domainAgeDays:
+        data.domainAgeDays
+    };
 
   } catch (error) {
 

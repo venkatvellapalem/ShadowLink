@@ -1,3 +1,20 @@
+chrome.runtime.onMessage.addListener(
+
+  message => {
+
+    if (
+
+      message.type ===
+      "SHOW_THREAT_POPUP"
+
+    ) {
+
+      showThreatPopup(
+        message.data
+      );
+    }
+  }
+);
 /* global checkVirusTotal */
 
 const engine =
@@ -29,10 +46,27 @@ const engine =
     loginIndicators.length * 20;
 
   /*
+    Suspicious TLD detection
+  */
+
+  const tldIndicators =
+    checkSuspiciousTLD(
+      window.location.href
+    );
+
+  result.indicators.push(
+    ...tldIndicators
+  );
+
+  result.score +=
+    tldIndicators.length * 30;
+
+  /*
     Add indicators into engine
   */
 
   result.indicators.forEach(
+
     indicator => {
 
       if (
@@ -45,8 +79,21 @@ const engine =
           60,
           indicator
         );
+      }
 
-      } else {
+      else if (
+        indicator.includes(
+          "Suspicious TLD"
+        )
+      ) {
+
+        engine.addThreat(
+          35,
+          indicator
+        );
+      }
+
+      else {
 
         engine.addThreat(
           20,
@@ -57,18 +104,61 @@ const engine =
   );
 
   /*
-    VirusTotal check
+    VirusTotal + Domain Age
   */
 
-  const vtStats =
+  const vtResult =
     await checkVirusTotal(
       window.location.href
     );
+
+  const vtStats =
+    vtResult?.stats;
+
+  const domainAgeDays =
+    vtResult?.domainAgeDays;
 
   console.log(
     "VirusTotal Stats:",
     vtStats
   );
+
+  /*
+    Domain Age Threats
+  */
+
+  if (
+    domainAgeDays !== null
+  ) {
+
+    if (
+      domainAgeDays < 30
+    ) {
+
+      engine.addThreat(
+
+        70,
+
+        `Very new domain (${domainAgeDays} days old)`
+      );
+    }
+
+    else if (
+      domainAgeDays < 90
+    ) {
+
+      engine.addThreat(
+
+        40,
+
+        `Recently registered domain (${domainAgeDays} days old)`
+      );
+    }
+  }
+
+  /*
+    VirusTotal Threats
+  */
 
   if (vtStats) {
 
@@ -80,12 +170,21 @@ const engine =
 
     if (malicious > 0) {
 
-      engine.addThreat(
+      if (malicious >= 5) {
 
-        80,
+  engine.addThreat(
+    80,
+    `VirusTotal flagged malicious (${malicious} vendors)`
+  );
+}
 
-        `VirusTotal flagged malicious (${malicious} vendors)`
-      );
+else if (malicious > 0) {
+
+  engine.addThreat(
+    30,
+    `VirusTotal flagged suspicious (${malicious} vendors)`
+  );
+}
     }
 
     if (suspicious > 0) {
@@ -100,7 +199,7 @@ const engine =
   }
 
   /*
-    Final result
+    Final Result
   */
 
   const finalResult = {
@@ -119,13 +218,6 @@ const engine =
     classifyThreat(
       finalResult.score
     );
-    chrome.runtime.sendMessage({
-
-  type: "UPDATE_ICON",
-
-  level:
-    finalResult.threatLevel
-});
 
   console.log(
     "ShadowLink Analysis:",
@@ -139,22 +231,26 @@ const engine =
   window.shadowLinkData =
     finalResult;
 
-if (
+  /*
+    Floating popup
+  */
 
-  finalResult.threatLevel ===
-  "Suspicious"
+  if (
 
-  ||
+    finalResult.threatLevel ===
+    "Suspicious"
 
-  finalResult.threatLevel ===
-  "Dangerous"
+    ||
 
-) {
+    finalResult.threatLevel ===
+    "Dangerous"
 
-  showThreatPopup(
-    finalResult
-  );
-}
+  ) {
+
+    showThreatPopup(
+      finalResult
+    );
+  }
 
   /*
     Update extension icon
@@ -168,20 +264,6 @@ if (
     level:
       finalResult.threatLevel
   });
-
-  /*
-    Dangerous overlay ONLY
-  */
-
-  if (
-
-    finalResult.threatLevel ===
-    "Dangerous"
-
-  ) {
-
-    
-  }
 
   /*
     Save threat history
@@ -218,3 +300,4 @@ if (
   }
 
 })();
+

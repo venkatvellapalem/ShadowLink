@@ -11,13 +11,15 @@
     "tabs",
     "activeTab",
     "storage",
-    "scripting"
+    "scripting",
+    "webNavigation",
+    "notifications"
   ],
 
   "host_permissions": [
     "<all_urls>",
     "https://*/*",
-  "http://*/*"
+    "http://*/*"
   ],
 
   "background": {
@@ -31,20 +33,35 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
+
+      "run_at": "document_start",
+
       "js": [
-"rules/scoring.js",
-"core/threatEngine.js",
-"ui/alertUI.js",
-  "rules/constants.js",
-  "rules/homoglyph.js",
-  "rules/virusTotalCheck.js",
-  "rules/urlAnalyzer.js",
-  "rules/loginDetector.js",
-  "rules/scoring.js",
-  "ui/warningBanner.js",
-  "storage/history.js",
-  "content.js"
-]
+
+        "rules/scoring.js",
+
+        "core/threatEngine.js",
+
+        "ui/alertUI.js",
+
+        "rules/domainReputation.js",
+
+        "rules/constants.js",
+
+        "rules/homoglyph.js",
+
+        "rules/virusTotalCheck.js",
+
+        "rules/urlAnalyzer.js",
+
+        "rules/loginDetector.js",
+
+        "ui/warningBanner.js",
+
+        "storage/history.js",
+
+        "content.js"
+      ]
     }
   ]
 }
