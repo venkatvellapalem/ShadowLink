@@ -1,40 +1,32 @@
 /**
- * scoring.js — ShadowLink Phishing Detection
+ * scoring.js — ShadowLink Threat Intelligence Framework
  *
- * Maps a cumulative numeric risk score to a human-readable threat level.
- *
- * Score composition reference (approximate weights):
- *   +60  Homoglyph / look-alike domain attack (per brand match)
+ * Score composition reference (weights):
+ *   +70  Domain age < 30 days (very new)
+ *   +60  Homoglyph / typosquat attack
+ *   +40  Domain age 30–90 days
+ *   +35  VirusTotal: malicious by 5+ vendors (high confidence)
  *   +30  Raw IP address URL
  *   +25  IDN / Punycode domain
  *   +20  Suspicious TLD
- *   +20  Login form on untrusted domain (per loginDetector hit)
+ *   +20  Login form on untrusted domain
  *   +15  HTTP (no encryption)
  *   +15  Excessive subdomain depth
- *   +10  Suspicious keyword in domain (per keyword)
+ *   +15  VirusTotal: malicious by 1–4 vendors (low confidence, treat as caution)
+ *   +10  VirusTotal: suspicious vendors
+ *   +10  Suspicious keyword in domain
  *   +10  Unusually long URL
- *   +10  Open-redirect query parameter
+ *   +10  Open-redirect parameter
+ *
+ * Threshold rationale:
+ *   ≥ 100  Dangerous  — Multiple high-confidence signals. Near-certain threat.
+ *   ≥ 60   Suspicious — Single strong signal (homoglyph, new domain, etc.)
+ *   ≥ 30   Warning    — Some signals present, warrants attention
+ *   < 30   Safe       — No significant indicators
  */
-
-// ---------------------------------------------------------------------------
-// classifyThreat(score)
-//
-// @param  {number} score — Accumulated risk score from the threat engine
-// @returns {string}       — One of: 'Safe' | 'Warning' | 'Suspicious' | 'Dangerous'
-//
-// Threshold rationale:
-//   ≥ 100  Dangerous  — Score can only reach this level when multiple high-
-//                        confidence signals stack (e.g. homoglyph + bad TLD +
-//                        login form + HTTP). Near-certain phishing page.
-//    ≥ 60  Suspicious — A single homoglyph hit alone reaches this threshold.
-//                        High-confidence individual signals land here.
-//    ≥ 25  Warning    — Combination of lower-weight signals (suspicious TLD +
-//                        keyword, or HTTP + deep subdomains). Warrants caution.
-//     < 25  Safe      — No significant indicators detected.
-// ---------------------------------------------------------------------------
 function classifyThreat(score) {
   if (score >= 100) return "Dangerous";
   if (score >= 60) return "Suspicious";
-  if (score >= 25) return "Warning";
+  if (score >= 30) return "Warning";
   return "Safe";
 }

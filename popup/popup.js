@@ -41,11 +41,10 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 
 /** @type {Record<string, ThreatConfig>} */
 const THREAT_CONFIGS = {
-  Safe: { color: "#00F5D4", label: "No threats detected" },
-  Warning: { color: "#F59E0B", label: "Minor issues detected" },
-  Caution: { color: "#F59E0B", label: "Proceed with caution" },
-  Suspicious: { color: "#F97316", label: "Suspicious activity detected" },
-  Dangerous: { color: "#EF4444", label: "Dangerous — do not proceed" },
+  Safe: { color: "var(--safe)", label: "No threats detected" },
+  Warning: { color: "var(--warning)", label: "Minor issues detected" },
+  Suspicious: { color: "var(--suspicious)", label: "Suspicious activity detected" },
+  Dangerous: { color: "var(--dangerous)", label: "Dangerous — do not proceed" },
 };
 
 /**
@@ -219,15 +218,21 @@ function renderScreenshots(screenshots) {
 
   container.innerHTML = screenshots
     .map((item) => {
-      // Truncate long URLs to 50 chars for display
-      const displayUrl =
-        item.url.length > 50 ? item.url.substring(0, 47) + "..." : item.url;
+      let displayUrl = item.url || "";
+      try {
+        const u = new URL(item.url);
+        displayUrl = u.hostname + u.pathname.substring(0, 28);
+      } catch {
+        displayUrl = item.url.substring(0, 40);
+      }
 
       return `
-        <div class="screenshot-item">
-          <img src="${item.screenshot}" alt="Captured evidence screenshot" />
-          <div class="screenshot-meta">${displayUrl}</div>
-          <div class="screenshot-time">${item.timestamp}</div>
+        <div class="evidence-item">
+          <img class="evidence-thumb" src="${item.screenshot}" alt="Evidence screenshot" />
+          <div class="evidence-info">
+            <div class="evidence-url" title="${item.url}">${displayUrl}</div>
+            <div class="evidence-time">${item.timestamp}</div>
+          </div>
         </div>`;
     })
     .join("");
@@ -284,8 +289,71 @@ function renderHistory(history) {
 }
 
 // =============================================================================
+// THREAT TIMELINE RENDERER
+// =============================================================================
+
+/**
+ * renderTimeline(timeline)
+ * @param {{ id: number, threatLevel: string, score: number, url: string,
+ *           hostname: string, category: string, timestamp: string }[]} timeline
+ */
+function renderTimeline(timeline) {
+  const container = document.getElementById("timeline");
+  if (!container) return;
+
+  if (!timeline || timeline.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📡</div>
+        <div>No threats recorded</div>
+      </div>`;
+    return;
+  }
+
+  const levelClass = {
+    Warning: "warning",
+    Caution: "warning",
+    Suspicious: "suspicious",
+    Dangerous: "dangerous",
+  };
+
+  container.innerHTML = timeline
+    .map((item, idx) => {
+      const cls = levelClass[item.threatLevel] || "warning";
+      let displayHost = item.hostname || item.url || "";
+      if (displayHost.length > 35)
+        displayHost = displayHost.substring(0, 32) + "…";
+      const isLast = idx === timeline.length - 1;
+
+      return `
+      <div class="timeline-item">
+        <div class="timeline-dot-col">
+          <div class="timeline-dot ${cls}"></div>
+          ${!isLast ? '<div class="timeline-line"></div>' : ""}
+        </div>
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <span class="timeline-category">${item.category || item.threatLevel}</span>
+            <span class="timeline-score">+${item.score}</span>
+          </div>
+          <div class="timeline-url" title="${item.url}">${displayHost}</div>
+          <div class="timeline-time">${item.timestamp}</div>
+          <span class="timeline-badge ${cls}">${item.threatLevel}</span>
+        </div>
+      </div>`;
+    })
+    .join("");
+}
+
+// =============================================================================
 // MAIN INIT — runs when popup.html finishes loading
 // =============================================================================
+
+// Show scanning state immediately while data loads
+const breakdownEl = document.getElementById("breakdown");
+if (breakdownEl) {
+  breakdownEl.innerHTML = `<div class="scanning-msg"><span class="scanning-dot"></span><span class="scanning-dot"></span><span class="scanning-dot"></span></div>`;
+}
 
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   const tab = tabs[0];
@@ -339,9 +407,131 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         renderBreakdown(data.breakdown);
         renderVTStats(data.vtStats, data.domainAgeDays);
       } else {
-        // Content script hasn't finished yet or the page is restricted
-        applyThreatStyling("Safe", 0);
-        renderBreakdown([]);
+        // Content script didn't run (DNS error, blocked page, etc.)
+        // Run a lightweight URL-only analysis from the popup side
+        try {
+          const tabUrl = tab.url;
+          const hostname = new URL(tabUrl).hostname
+            .toLowerCase()
+            .replace(/^www\./, "");
+          const label = hostname.split(".")[0];
+
+          // Quick homoglyph check inline
+          const brands = [
+            "google",
+            "paypal",
+            "microsoft",
+            "facebook",
+            "apple",
+            "amazon",
+            "instagram",
+            "netflix",
+            "twitter",
+            "linkedin",
+            "github",
+          ];
+
+          function qLev(a, b) {
+            const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+            for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+            for (let i = 1; i <= a.length; i++)
+              for (let j = 1; j <= b.length; j++)
+                dp[i][j] =
+                  a[i - 1] === b[j - 1]
+                    ? dp[i - 1][j - 1]
+                    : 1 +
+                      Math.min(dp[i - 1][j - 1], dp[i][j - 1], dp[i - 1][j]);
+            return dp[a.length][b.length];
+          }
+
+          function qNorm(s) {
+            return s
+              .toLowerCase()
+              .replace(/0/g, "o")
+              .replace(/1/g, "l")
+              .replace(/3/g, "e")
+              .replace(/5/g, "s");
+          }
+
+          let fallbackScore = 0;
+          const fallbackBreakdown = [];
+
+          if (tabUrl.startsWith("http://")) {
+            fallbackScore += 15;
+            fallbackBreakdown.push({
+              points: 15,
+              reason: "Unencrypted connection (HTTP)",
+            });
+          }
+
+          const normLabel = qNorm(label);
+          for (const brand of brands) {
+            const normBrand = qNorm(brand);
+            if (normLabel === normBrand) continue;
+            if (
+              hostname === brand + ".com" ||
+              hostname.endsWith("." + brand + ".com")
+            )
+              continue;
+            const dist = qLev(normLabel, normBrand);
+            const maxD = Math.min(Math.floor(normBrand.length * 0.25), 2);
+            if (dist >= 1 && dist <= maxD) {
+              fallbackScore += 60;
+              fallbackBreakdown.push({
+                points: 60,
+                reason: `Possible homoglyph attack targeting: ${brand} (detected: ${label})`,
+              });
+              break;
+            }
+          }
+
+          const suspTLDs = [
+            ".xyz",
+            ".top",
+            ".click",
+            ".tk",
+            ".gq",
+            ".ml",
+            ".cf",
+            ".ga",
+            ".work",
+            ".buzz",
+          ];
+          for (const tld of suspTLDs) {
+            if (hostname.endsWith(tld)) {
+              fallbackScore += 20;
+              fallbackBreakdown.push({
+                points: 20,
+                reason: `Suspicious TLD: ${tld}`,
+              });
+              break;
+            }
+          }
+
+          let fallbackLevel = "Safe";
+          if (fallbackScore >= 100) fallbackLevel = "Dangerous";
+          else if (fallbackScore >= 60) fallbackLevel = "Suspicious";
+          else if (fallbackScore >= 30) fallbackLevel = "Warning";
+
+          applyThreatStyling(fallbackLevel, fallbackScore);
+          renderBreakdown(fallbackBreakdown);
+
+          // Update icon
+          if (fallbackLevel !== "Safe") {
+            const iconMap = {
+              Warning: "yellow",
+              Suspicious: "orange",
+              Dangerous: "red",
+            };
+            chrome.action.setIcon({
+              path: { 128: `../assets/icons/${iconMap[fallbackLevel]}.png` },
+              tabId: tab.id,
+            });
+          }
+        } catch {
+          applyThreatStyling("Safe", 0);
+          renderBreakdown([]);
+        }
       }
 
       // Refine protocol display from content script's window.location.protocol
@@ -360,9 +550,20 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
 
 // --- Load persisted screenshots and history from storage ---
 chrome.storage.local.get(
-  ["shadowlinkScreenshots", "shadowlinkHistory"],
+  ["shadowlinkScreenshots", "shadowlinkHistory", "shadowlinkTimeline"],
   (data) => {
     renderScreenshots(data.shadowlinkScreenshots || []);
     renderHistory(data.shadowlinkHistory || []);
+    renderTimeline(data.shadowlinkTimeline || []);
   },
 );
+
+// Clear timeline button
+const clearBtn = document.getElementById("clearTimeline");
+if (clearBtn) {
+  clearBtn.addEventListener("click", () => {
+    chrome.storage.local.remove(["shadowlinkTimeline"], () => {
+      renderTimeline([]);
+    });
+  });
+}

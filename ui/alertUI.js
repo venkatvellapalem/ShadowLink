@@ -1,36 +1,30 @@
 /* ==========================================================================
    ShadowLink — alertUI.js
-   Floating Threat Card — AI-powered, cinematic glassmorphism popup
+   Floating Threat Card — cinematic glassmorphism popup
    ========================================================================== */
 
 const SEVERITY = {
   Safe: {
-    color: "#00F5D4",
-    glow: "rgba(0,245,212,0.3)",
+    color: "var(--safe)",
+    glow: "rgba(0,229,191,0.3)",
     icon: "🛡️",
     label: "SECURE",
   },
   Warning: {
-    color: "#F59E0B",
-    glow: "rgba(245,158,11,0.3)",
+    color: "var(--warning)",
+    glow: "rgba(245,166,35,0.3)",
     icon: "⚠️",
     label: "WARNING",
   },
-  Caution: {
-    color: "#F59E0B",
-    glow: "rgba(245,158,11,0.3)",
-    icon: "⚠️",
-    label: "CAUTION",
-  },
   Suspicious: {
-    color: "#F97316",
-    glow: "rgba(249,115,22,0.35)",
+    color: "var(--suspicious)",
+    glow: "rgba(255,107,53,0.35)",
     icon: "🔍",
     label: "SUSPICIOUS",
   },
   Dangerous: {
-    color: "#EF4444",
-    glow: "rgba(239,68,68,0.4)",
+    color: "var(--dangerous)",
+    glow: "rgba(255,59,59,0.4)",
     icon: "☠️",
     label: "DANGEROUS",
   },
@@ -94,7 +88,7 @@ function showThreatPopup(result) {
   injectStyles();
 
   /* ── Resolve severity config ──────────────────────────────────────────── */
-  const cfg = SEVERITY[result.threatLevel] || SEVERITY.Caution;
+  const cfg = SEVERITY[result.threatLevel] || SEVERITY.Warning;
 
   /* ── Clamp values ─────────────────────────────────────────────────────── */
   const displayScore = Math.min(result.score, 999);
@@ -268,7 +262,7 @@ function showThreatPopup(result) {
             font-size:  10px;
             color:      rgba(240,246,255,0.4);
             letter-spacing: 0.04em;
-          ">AI Threat Intelligence</span>
+          ">Threat Intelligence Framework</span>
         </div>
         <!-- Threat level badge -->
         <div style="
@@ -342,7 +336,7 @@ function showThreatPopup(result) {
         font-size:  10px;
         color:      rgba(240,246,255,0.3);
         letter-spacing: 0.03em;
-      ">Powered by VirusTotal + AI</span>
+      ">Powered by ShadowLink Threat Intelligence</span>
 
       <button class="sl-dismiss-btn" style="
         background:    ${cfg.color};

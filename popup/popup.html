@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>ShadowLink — AI Threat Intelligence</title>
+        <title>ShadowLink — Threat Intelligence</title>
 
         <!-- Google Fonts: Space Grotesk -->
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -29,7 +29,7 @@
                 <div class="shield-icon" id="shieldIcon">🛡</div>
                 <div class="brand-text">
                     <div class="brand-name">ShadowLink</div>
-                    <div class="brand-tagline">AI Threat Intelligence</div>
+                    <div class="brand-tagline">Threat Intelligence Framework</div>
                 </div>
             </div>
 
@@ -43,7 +43,7 @@
        SITE ANALYSIS CARD
        ===================================================================== -->
         <section class="card site-card">
-            <div class="card-label">ANALYZING</div>
+            <div class="card-label">Analyzing</div>
 
             <div class="site-url truncate" id="site">Scanning...</div>
 
@@ -57,7 +57,7 @@
         <!-- =====================================================================
        THREAT LEVEL HERO — Score Ring + Level Label
        ===================================================================== -->
-        <section class="threat-hero glass" id="threatHero">
+        <section class="threat-hero card" id="threatHero">
             <!-- Circular Progress Ring -->
             <div class="threat-score-ring" id="scoreRing">
                 <svg viewBox="0 0 100 100" class="ring-svg" aria-hidden="true">
@@ -93,7 +93,7 @@
         <!-- =====================================================================
        VIRUSTOTAL STATS ROW
        ===================================================================== -->
-        <section class="vt-row glass" id="vtRow">
+        <section class="vt-row card" id="vtRow">
             <div class="vt-stat" id="vtClean">
                 <div class="vt-num" id="vtCleanNum">—</div>
                 <div class="vt-lbl">Clean</div>
@@ -125,21 +125,21 @@
             <div class="module-chip active" title="VirusTotal Reputation">
                 VT
             </div>
-            <div class="module-chip active" title="Homoglyph / IDN Detection">
+            <div class="module-chip active" title="Homoglyph Detection">
                 HMG
             </div>
-            <div class="module-chip active" title="Login Form Detection">
-                LOGIN
-            </div>
-            <div class="module-chip active" title="Domain Age Lookup">AGE</div>
-            <div class="module-chip active" title="TLD Risk Analysis">TLD</div>
+            <div class="module-chip active" title="Login Detection">LOGIN</div>
+            <div class="module-chip active" title="Domain Age">AGE</div>
+            <div class="module-chip active" title="TLD Analysis">TLD</div>
+            <div class="module-chip active" title="URL Entropy">ENTROPY</div>
+            <div class="module-chip active" title="JS Behavior">JS</div>
         </section>
 
         <!-- =====================================================================
        THREAT BREAKDOWN CARD
        ===================================================================== -->
         <section class="card breakdown-card" id="breakdownCard">
-            <div class="card-label">THREAT BREAKDOWN</div>
+            <div class="card-label">Threat Breakdown</div>
 
             <div id="breakdown" class="breakdown-list">
                 <div class="no-threat-msg">
@@ -164,6 +164,15 @@
             </button>
             <button
                 class="tab-btn"
+                data-tab="timeline"
+                role="tab"
+                aria-selected="false"
+                aria-controls="tab-timeline"
+            >
+                Timeline
+            </button>
+            <button
+                class="tab-btn"
                 data-tab="history"
                 role="tab"
                 aria-selected="false"
@@ -182,12 +191,35 @@
             role="tabpanel"
             aria-labelledby="tab-btn-evidence"
         >
-            <div class="card">
-                <div class="card-label">CAPTURED EVIDENCE</div>
-                <div id="screenshots" class="screenshots-grid">
+            <div class="card evidence-card">
+                <div class="card-label">Captured Evidence</div>
+                <div id="screenshots" class="evidence-list">
                     <div class="empty-state">
                         <div class="empty-icon">📷</div>
                         <div>No evidence captured</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================================
+       TAB PANEL: Timeline
+       ===================================================================== -->
+        <section
+            class="tab-panel"
+            id="tab-timeline"
+            role="tabpanel"
+            aria-labelledby="tab-btn-timeline"
+        >
+            <div class="card timeline-card">
+                <div class="card-label-row">
+                    <div class="card-label">Threat Timeline</div>
+                    <button class="clear-btn" id="clearTimeline">Clear</button>
+                </div>
+                <div id="timeline" class="timeline-list">
+                    <div class="empty-state">
+                        <div class="empty-icon">📡</div>
+                        <div>No threats recorded</div>
                     </div>
                 </div>
             </div>
@@ -203,7 +235,7 @@
             aria-labelledby="tab-btn-history"
         >
             <div class="card">
-                <div class="card-label">RECENT DETECTIONS</div>
+                <div class="card-label">Recent Detections</div>
                 <div id="history" class="history-list">
                     <div class="empty-state">
                         <div class="empty-icon">🔍</div>
@@ -218,7 +250,7 @@
        ===================================================================== -->
         <footer class="popup-footer">
             <span class="footer-text">ShadowLink v1.0</span>
-            <span class="footer-badge">AI-Powered</span>
+            <span class="footer-badge">Threat Intelligence</span>
         </footer>
 
         <!-- Popup Logic -->

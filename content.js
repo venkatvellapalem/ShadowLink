@@ -11,7 +11,10 @@
    ============================================================================= */
 
 /* global createThreatEngine, analyzeURL, detectLoginForms, checkSuspiciousTLD,
-          checkVirusTotal, classifyThreat, showThreatPopup, saveThreat */
+          checkVirusTotal, classifyThreat, showThreatPopup, saveThreat,
+          analyzeURLEntropy, checkURLShortener, detectCredentialThreats,
+          analyzeJSBehavior, analyzeTyposquatting, analyzeRedirectChain,
+          saveTimelineEvent */
 
 "use strict";
 
@@ -43,6 +46,9 @@ chrome.runtime.onMessage.addListener((message) => {
     // -------------------------------------------------------------------------
     const engine = createThreatEngine();
 
+    // Signal scanning started — set icon to orange immediately (scanning state)
+    chrome.runtime.sendMessage({ type: "UPDATE_ICON", level: "Scanning" });
+
     // -------------------------------------------------------------------------
     // 2. URL structure analysis
     //    analyzeURL() returns { score, indicators[] }. We pass each indicator
@@ -55,11 +61,17 @@ chrome.runtime.onMessage.addListener((message) => {
       const lower = indicator.toLowerCase();
       let points;
 
+      // Map each indicator to its correct point value from urlAnalyzer.js
       if (lower.includes("homoglyph")) points = 60;
       else if (lower.includes("punycode") || lower.includes("idn")) points = 25;
       else if (lower.includes("ip address")) points = 30;
-      else if (lower.includes("http")) points = 15;
-      else points = 20;
+      else if (lower.includes("unencrypted") || lower.includes("http")) points = 15;
+      else if (lower.includes("subdomain depth")) points = 15;
+      else if (lower.includes("keyword")) points = 10;
+      else if (lower.includes("long url")) points = 10;
+      else if (lower.includes("open-redirect")) points = 10;
+      else if (lower.includes("top-level domain") || lower.includes("tld")) points = 20;
+      else points = 10; // Conservative default
 
       engine.addThreat(points, indicator);
     });
@@ -70,6 +82,75 @@ chrome.runtime.onMessage.addListener((message) => {
     // -------------------------------------------------------------------------
     const loginIndicators = detectLoginForms();
     loginIndicators.forEach((ind) => engine.addThreat(20, ind));
+
+    // -------------------------------------------------------------------------
+    // 3b. URL Entropy analysis
+    // -------------------------------------------------------------------------
+    if (typeof analyzeURLEntropy === "function") {
+      const entropyResult = analyzeURLEntropy(window.location.href);
+      entropyResult.indicators.forEach((ind) =>
+        engine.addThreat(
+          entropyResult.score > 0
+            ? Math.round(
+                entropyResult.score /
+                  Math.max(entropyResult.indicators.length, 1),
+              )
+            : 10,
+          ind,
+        ),
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // 3c. URL Shortener check
+    // -------------------------------------------------------------------------
+    if (typeof checkURLShortener === "function") {
+      const shortResult = checkURLShortener(window.location.href);
+      shortResult.indicators.forEach((ind) => engine.addThreat(10, ind));
+    }
+
+    // -------------------------------------------------------------------------
+    // 3d. JS Behavior analysis
+    // -------------------------------------------------------------------------
+    if (typeof analyzeJSBehavior === "function") {
+      const jsResult = analyzeJSBehavior();
+      jsResult.indicators.forEach((ind) => {
+        // Map score proportionally per indicator
+        const pts =
+          jsResult.indicators.length > 0
+            ? Math.round(jsResult.score / jsResult.indicators.length)
+            : 10;
+        engine.addThreat(pts, ind);
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 3e. Credential harvesting detection
+    // -------------------------------------------------------------------------
+    if (typeof detectCredentialThreats === "function") {
+      const credResult = detectCredentialThreats();
+      credResult.indicators.forEach((ind) => {
+        const pts =
+          credResult.indicators.length > 0
+            ? Math.round(credResult.score / credResult.indicators.length)
+            : 15;
+        engine.addThreat(pts, ind);
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 3f. Redirect chain analysis
+    // -------------------------------------------------------------------------
+    if (typeof analyzeRedirectChain === "function") {
+      const rdResult = analyzeRedirectChain();
+      rdResult.indicators.forEach((ind) => {
+        const pts =
+          rdResult.indicators.length > 0
+            ? Math.round(rdResult.score / rdResult.indicators.length)
+            : 10;
+        engine.addThreat(pts, ind);
+      });
+    }
 
     // -------------------------------------------------------------------------
     // 4. Suspicious TLD check (deduplication)
@@ -123,19 +204,31 @@ chrome.runtime.onMessage.addListener((message) => {
       const malicious = vtStats.malicious || 0;
       const suspicious = vtStats.suspicious || 0;
 
-      if (malicious >= 5) {
+      if (malicious >= 10) {
         engine.addThreat(
-          80,
+          70,
           `VirusTotal: flagged malicious by ${malicious} vendors`,
         );
-      } else if (malicious > 0) {
-        engine.addThreat(40, `VirusTotal: flagged by ${malicious} vendor(s)`);
+      } else if (malicious >= 5) {
+        engine.addThreat(
+          35,
+          `VirusTotal: flagged malicious by ${malicious} vendors`,
+        );
+      } else if (malicious >= 2) {
+        engine.addThreat(20, `VirusTotal: flagged by ${malicious} vendor(s)`);
+      } else if (malicious === 1) {
+        engine.addThreat(10, `VirusTotal: 1 vendor flagged (low confidence)`);
       }
 
-      if (suspicious > 0) {
+      if (suspicious >= 3) {
         engine.addThreat(
-          30,
+          15,
           `VirusTotal: flagged suspicious by ${suspicious} vendors`,
+        );
+      } else if (suspicious > 0) {
+        engine.addThreat(
+          5,
+          `VirusTotal: ${suspicious} vendor(s) flagged suspicious`,
         );
       }
     }
@@ -158,6 +251,16 @@ chrome.runtime.onMessage.addListener((message) => {
 
     // Expose globally — popup reads this via chrome.scripting.executeScript
     window.shadowLinkData = finalResult;
+
+    // -------------------------------------------------------------------------
+    // 6b. Save to SOC threat timeline
+    // -------------------------------------------------------------------------
+    if (
+      finalResult.threatLevel !== "Safe" &&
+      typeof saveTimelineEvent === "function"
+    ) {
+      saveTimelineEvent(finalResult);
+    }
 
     console.log("[ShadowLink] Analysis complete:", finalResult);
 

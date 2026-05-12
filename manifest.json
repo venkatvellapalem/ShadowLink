@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "ShadowLink",
   "version": "1.0.0",
-  "description": "AI-powered phishing detection browser extension.",
+  "description": "Real-time threat intelligence and phishing detection browser extension.",
 
   "permissions": [
     "tabs",
@@ -20,7 +20,10 @@
   },
 
   "action": {
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "128": "assets/icons/green.png"
+    }
   },
 
   "content_scripts": [
@@ -34,11 +37,18 @@
         "rules/domainReputation.js",
         "rules/loginDetector.js",
         "rules/urlAnalyzer.js",
+        "rules/urlEntropy.js",
+        "rules/urlShortener.js",
+        "rules/credentialLeak.js",
+        "rules/jsBehavior.js",
+        "rules/typosquatting.js",
+        "rules/redirectAnalyzer.js",
         "rules/virusTotalCheck.js",
         "core/threatEngine.js",
         "ui/alertUI.js",
         "ui/warningBanner.js",
         "storage/history.js",
+        "storage/timelineStore.js",
         "content.js"
       ]
     }

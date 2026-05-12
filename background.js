@@ -27,6 +27,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   if (message.type === "UPDATE_ICON") {
     const iconMap = {
       Safe: "assets/icons/green.png",
+      Scanning: "assets/icons/orange.png",
       Warning: "assets/icons/yellow.png",
       Caution: "assets/icons/yellow.png",
       Suspicious: "assets/icons/orange.png",
@@ -101,6 +102,11 @@ function bgIsBrandHost(hostname, brand) {
 // =============================================================================
 // PRE-NAVIGATION THREAT SCANNER
 // Fires before the page loads. If score >= 90, redirect to warning page.
+//
+// NOTE: Threat lists (suspiciousKeywords, suspiciousTlds, targetedBrands)
+// are intentionally duplicated here instead of importing from constants.js
+// because background.js runs in service worker context and cannot import
+// from content scripts. Values are kept in sync with scoring.js spec.
 // =============================================================================
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   if (details.frameId !== 0) return;
@@ -129,6 +135,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
     "login",
     "verify",
     "secure",
+    "security",
     "account",
     "update",
     "banking",
@@ -139,6 +146,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
     "confirm",
     "validate",
   ];
+  // ↑ KEEP IN SYNC WITH constants.js::suspiciousKeywords
 
   const suspiciousTlds = [
     ".xyz",
@@ -157,6 +165,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
     ".loan",
     ".trade",
   ];
+  // ↑ KEEP IN SYNC WITH constants.js::suspiciousTLDs
 
   const targetedBrands = [
     "google",
@@ -173,6 +182,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
     "adobe",
     "dropbox",
   ];
+  // ↑ KEEP IN SYNC WITH constants.js::trustedDomains
 
   let score = 0;
   const indicators = [];
@@ -184,18 +194,20 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   }
 
   // Rule 2: Suspicious TLD
+  // NOTE: Must align with content.js scoring (20 pts per scoring.js spec)
   for (const tld of suspiciousTlds) {
     if (hostname.endsWith(tld)) {
-      score += 35;
+      score += 20;
       indicators.push(`Suspicious TLD: ${tld}`);
       break;
     }
   }
 
   // Rule 3: Suspicious keywords in hostname only
+  // NOTE: Must align with content.js scoring (10 pts per scoring.js spec)
   for (const kw of suspiciousKeywords) {
     if (hostname.includes(kw)) {
-      score += 20;
+      score += 10;
       indicators.push(`Suspicious keyword in domain: "${kw}"`);
     }
   }
@@ -207,10 +219,11 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   }
 
   // Rule 5: Brand impersonation via homoglyph (Levenshtein)
-  //   - Exact-match normalization  → non-official TLD spoof    (+45)
-  //   - Near-match (dist 1–2)      → typosquat / homoglyph     (+55)
+  // NOTE: Must align with scoring.js (60 pts for homoglyph/typosquat)
+  // Improved detection: finds brand names anywhere in hostname, not just first label
   const label = bgExtractLabel(hostname);
   const normLabel = bgNormalize(label);
+  const normHostname = bgNormalize(hostname); // Check full hostname too
 
   for (const brand of targetedBrands) {
     const normBrand = bgNormalize(brand);
@@ -218,28 +231,45 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
     // Skip if this IS the legitimate brand host (e.g. microsoft.com)
     if (bgIsBrandHost(hostname, brand)) continue;
 
+    // Strategy 1: Exact first-label match (e.g., "microsoft.xyz")
     if (normLabel === normBrand) {
-      // e.g. "microsoft.xyz" — exact brand name on a bad TLD
-      score += 45;
+      score += 50;
       indicators.push(`Brand impersonation: ${brand} on non-official domain`);
       break;
     }
 
+    // Strategy 2: Brand name CONTAINED anywhere in hostname
+    // (e.g., "paypal-login-security" contains "paypal", "microsoft-auth-check" contains "microsoft")
+    if (normHostname.includes(normBrand)) {
+      // Additional confidence check: also has suspicious keywords nearby
+      const hasKeyword = suspiciousKeywords.some((kw) =>
+        hostname.toLowerCase().includes(kw),
+      );
+      if (hasKeyword) {
+        score += 60;
+        indicators.push(
+          `Brand ${brand} detected in domain with suspicious keywords`,
+        );
+        break;
+      }
+    }
+
+    // Strategy 3: Near-match via Levenshtein (Typo/homoglyph)
     const dist = bgLevenshtein(normLabel, normBrand);
     const maxDist = Math.min(Math.floor(normBrand.length * 0.25), 2);
 
     if (dist >= 1 && dist <= maxDist) {
-      // e.g. "rnicrosoft" → dist 1 from "microsoft" → homoglyph/typosquat
-      score += 55;
+      score += 60;
       indicators.push(
         `Homoglyph/typosquat of ${brand} detected (domain: ${label})`,
       );
-      break; // one brand match is enough
+      break;
     }
   }
 
-  // --- Redirect dangerous URLs to warning page ---
-  if (score >= 90) {
+  // --- Redirect dangerous/suspicious URLs to warning page ---
+  // Threshold: 60 pts = "Suspicious" level (matches scoring.js::classifyThreat)
+  if (score >= 60) {
     const reason = encodeURIComponent(indicators.join(" | "));
     const blockedUrl = encodeURIComponent(url);
     chrome.tabs.update(details.tabId, {
