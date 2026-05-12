@@ -1,63 +1,943 @@
+/* ==========================================================================
+   ShadowLink — popup.css v2
+   Pure black, Space Grotesk, minimal — Linear/Vercel dark dashboard style
+   ========================================================================== */
+
+/* ==========================================================================
+   1. RESET & BASE
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+}
+
 body {
-
-  margin: 0;
-
-  width: 350px;
-
-  background: #050816;
-
-  color: #E6F1FF;
-
-  font-family: Arial, sans-serif;
+    width: 380px;
+    min-width: 380px;
+    max-width: 380px;
+    background: #000000;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    font-weight: var(--weight-normal);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-bottom: 4px;
 }
 
-.container {
-  padding: 18px;
+/* ==========================================================================
+   2. CUSTOM SCROLLBAR
+   ========================================================================== */
+
+::-webkit-scrollbar {
+    width: 2px;
 }
 
-h1 {
-
-  margin-top: 0;
-
-  color: #00FFB2;
-
-  font-size: 28px;
+::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-.status {
-
-  margin-bottom: 18px;
-
-  color: #00FFB2;
-
-  font-weight: bold;
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-full);
 }
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+/* ==========================================================================
+   3. SHARED CARD COMPONENT
+   ========================================================================== */
 
 .card {
-
-  background: rgba(255,255,255,0.03);
-
-  border: 1px solid rgba(255,255,255,0.08);
-
-  border-radius: 12px;
-
-  padding: 14px;
-
-  margin-bottom: 14px;
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 12px;
+    transition: border-color var(--dur-fast) ease;
 }
 
-.label {
+/* ==========================================================================
+   4. CARD LABEL — section micro-headers
+   ========================================================================== */
 
-  font-size: 13px;
-
-  opacity: 0.7;
-
-  margin-bottom: 6px;
+.card-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: var(--weight-medium);
+    margin-bottom: 10px;
+    font-family: var(--font-sans);
 }
 
-#threatLevel {
+/* ==========================================================================
+   5. HEADER
+   ========================================================================== */
 
-  font-size: 20px;
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    background: #000000;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
 
-  font-weight: bold;
+.header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.shield-icon {
+    font-size: 26px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.brand-name {
+    font-size: 15px;
+    font-weight: var(--weight-semibold);
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.brand-tagline {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: var(--weight-medium);
+    line-height: 1.2;
+}
+
+/* Protection badge — pill with dot */
+.protection-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 11px;
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.03);
+    letter-spacing: 0.01em;
+    transition:
+        border-color var(--dur-normal) ease,
+        color var(--dur-normal) ease;
+    white-space: nowrap;
+}
+
+.protection-badge.danger {
+    border-color: rgba(255, 59, 59, 0.3);
+    color: var(--dangerous);
+    background: rgba(255, 59, 59, 0.06);
+}
+
+.protection-badge.caution {
+    border-color: rgba(245, 166, 35, 0.3);
+    color: var(--warning);
+    background: rgba(245, 166, 35, 0.06);
+}
+
+/* Pulse dot */
+.pulse-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--cyan);
+    flex-shrink: 0;
+    animation: pulseDot 2.2s ease-in-out infinite;
+}
+
+.pulse-dot.danger {
+    background: var(--dangerous);
+}
+
+.pulse-dot.caution {
+    background: var(--warning);
+}
+
+/* ==========================================================================
+   6. SITE CARD
+   ========================================================================== */
+
+.site-card {
+    margin: 8px 18px 0;
+    padding: 14px 16px;
+}
+
+.site-url {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--cyan);
+    font-weight: var(--weight-normal);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    margin-bottom: 6px;
+    letter-spacing: 0.01em;
+}
+
+.site-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: var(--weight-medium);
+}
+
+.meta-divider {
+    color: var(--text-micro);
+    font-size: 11px;
+}
+
+/* ==========================================================================
+   7. THREAT HERO — Score ring + level label
+   ========================================================================== */
+
+.threat-hero {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+    margin: 8px 18px 0;
+    padding: 18px;
+    border-radius: 12px;
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    transition: border-color var(--dur-normal) ease;
+}
+
+/* State tints — border only, no glow unless active threat */
+.threat-hero.safe-state {
+    border-color: rgba(0, 229, 191, 0.15);
+}
+.threat-hero.caution-state {
+    border-color: rgba(245, 166, 35, 0.15);
+}
+.threat-hero.suspicious-state {
+    border-color: rgba(255, 107, 53, 0.15);
+}
+.threat-hero.danger-state {
+    border-color: rgba(255, 59, 59, 0.2);
+    box-shadow: 0 0 24px rgba(255, 59, 59, 0.08);
+}
+
+/* Score ring wrapper */
+.threat-score-ring {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+}
+
+.ring-svg {
+    width: 72px;
+    height: 72px;
+    transform: rotate(-90deg);
+    overflow: visible;
+}
+
+/* Track — very subtle */
+.ring-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.06);
+    stroke-width: 7;
+}
+
+/* Fill arc — transitions dashoffset */
+.ring-fill {
+    fill: none;
+    stroke: var(--cyan);
+    stroke-width: 7;
+    stroke-linecap: round;
+    stroke-dasharray: 251;
+    stroke-dashoffset: 251;
+    transition:
+        stroke-dashoffset 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+        stroke 0.4s ease;
+}
+
+/* Ring center — absolute overlay */
+.ring-inner {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.ring-score {
+    font-size: 22px;
+    font-weight: var(--weight-bold);
+    color: var(--text-primary);
+    line-height: 1;
+    font-family: var(--font-sans);
+    transition: color var(--dur-normal) ease;
+}
+
+.ring-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 2px;
+    font-weight: var(--weight-medium);
+}
+
+/* Threat info — right column */
+.threat-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+.threat-level-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: var(--weight-medium);
+}
+
+.threat-level-value {
+    font-size: 20px;
+    font-weight: var(--weight-bold);
+    color: var(--text-primary);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    transition: color var(--dur-normal) ease;
+}
+
+.threat-sublabel {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    margin-top: 1px;
+}
+
+/* ==========================================================================
+   8. VIRUSTOTAL STATS ROW
+   ========================================================================== */
+
+.vt-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    margin: 8px 18px 0;
+    border-radius: 12px;
+    background: #111111;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    overflow: hidden;
+    transition: border-color var(--dur-fast) ease;
+}
+
+.vt-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 0;
+    text-align: center;
+    position: relative;
+    transition: background var(--dur-fast) ease;
+}
+
+/* Left separator between stats */
+.vt-stat + .vt-stat::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 20%;
+    height: 60%;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.vt-stat:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.vt-num {
+    font-size: 18px;
+    font-weight: var(--weight-semibold);
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+    line-height: 1;
+    transition: color var(--dur-normal) ease;
+}
+
+.vt-lbl {
+    font-size: 9px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 4px;
+    font-weight: var(--weight-medium);
+}
+
+/* Danger/caution coloring on VT cells */
+.vt-stat-danger .vt-num {
+    color: var(--dangerous);
+}
+.vt-stat-danger .vt-lbl {
+    color: rgba(255, 59, 59, 0.55);
+}
+.vt-stat-caution .vt-num {
+    color: var(--warning);
+}
+.vt-stat-caution .vt-lbl {
+    color: rgba(245, 166, 35, 0.55);
+}
+
+/* ==========================================================================
+   9. MODULES ROW — detection chip pills
+   ========================================================================== */
+
+.modules-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 18px;
+}
+
+.module-chip {
+    font-size: 10px;
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-full);
+    padding: 3px 10px;
+    color: var(--text-muted);
+    background: transparent;
+    font-family: var(--font-sans);
+    transition:
+        color var(--dur-fast) ease,
+        border-color var(--dur-fast) ease,
+        background var(--dur-fast) ease;
+}
+
+.module-chip.active {
+    color: var(--cyan);
+    border-color: rgba(0, 229, 191, 0.25);
+    background: rgba(0, 229, 191, 0.07);
+}
+
+.module-chip.active:hover {
+    background: rgba(0, 229, 191, 0.11);
+    border-color: rgba(0, 229, 191, 0.35);
+}
+
+.module-chip.inactive {
+    opacity: 0.45;
+}
+
+/* ==========================================================================
+   10. BREAKDOWN CARD
+   ========================================================================== */
+
+.breakdown-card {
+    margin: 0 18px;
+    padding: 14px 16px;
+}
+
+.breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 2px;
+}
+
+.breakdown-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.breakdown-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.breakdown-item:first-child {
+    padding-top: 0;
+}
+
+/* Score pill on the left */
+.breakdown-score {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 59, 59, 0.12);
+    color: var(--dangerous);
+    flex-shrink: 0;
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+}
+
+.breakdown-score.caution {
+    background: rgba(245, 166, 35, 0.12);
+    color: var(--warning);
+}
+
+.breakdown-score.suspicious {
+    background: rgba(255, 107, 53, 0.12);
+    color: var(--suspicious);
+}
+
+/* Reason text */
+.breakdown-reason {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.45;
+    padding-top: 1px;
+}
+
+/* Empty / all clear state */
+.no-threat-msg {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 10px 0 4px;
+    text-align: center;
+}
+
+.no-threat-icon {
+    font-size: 14px;
+    color: var(--safe);
+}
+
+/* ==========================================================================
+   11. TAB NAVIGATION
+   ========================================================================== */
+
+.tab-nav {
+    display: flex;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    margin: 10px 18px 0;
+}
+
+.tab-btn {
+    flex: 1;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: var(--weight-medium);
+    padding: 10px 0;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: var(--font-sans);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition:
+        color var(--dur-fast) ease,
+        border-color var(--dur-fast) ease;
+}
+
+.tab-btn:hover {
+    color: var(--text-secondary);
+}
+
+.tab-btn.active {
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--cyan);
+}
+
+/* ==========================================================================
+   12. TAB PANELS
+   ========================================================================== */
+
+.tab-panel {
+    display: none;
+    padding: 10px 18px 16px;
+}
+
+.tab-panel.active {
+    display: block;
+    animation: fadeUp var(--dur-normal) var(--ease-out) both;
+}
+
+.tab-panel .card {
+    padding: 14px 16px;
+}
+
+/* ==========================================================================
+   13. SCREENSHOTS GRID
+   ========================================================================== */
+
+.screenshots-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.screenshots-grid img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    display: block;
+    transition:
+        border-color var(--dur-fast) ease,
+        opacity var(--dur-fast) ease;
+}
+
+.screenshot-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.screenshot-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.screenshot-time {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.screenshots-grid img:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+    opacity: 0.92;
+}
+
+/* ==========================================================================
+   14. HISTORY LIST
+   ========================================================================== */
+
+.history-list {
+    display: flex;
+    flex-direction: column;
+    margin-top: 4px;
+}
+
+.history-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.history-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.history-item:first-child {
+    padding-top: 2px;
+}
+
+.history-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+/* Colored severity badge (threat-badge — used in JS) */
+.threat-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 10px;
+    font-weight: var(--weight-semibold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+    font-family: var(--font-sans);
+}
+
+.threat-badge.safe {
+    background: var(--safe-dim);
+    color: var(--safe);
+    border-color: rgba(0, 229, 191, 0.22);
+}
+
+.threat-badge.caution {
+    background: var(--warning-dim);
+    color: var(--warning);
+    border-color: rgba(245, 166, 35, 0.22);
+}
+
+.threat-badge.suspicious {
+    background: var(--suspicious-dim);
+    color: var(--suspicious);
+    border-color: rgba(255, 107, 53, 0.22);
+}
+
+.threat-badge.dangerous {
+    background: var(--dangerous-dim);
+    color: var(--dangerous);
+    border-color: rgba(255, 59, 59, 0.22);
+}
+
+.history-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* History badge — pill on card (alternative) */
+.history-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 10px;
+    font-weight: var(--weight-semibold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+}
+
+.history-score {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.history-time {
+    font-size: 10px;
+    color: var(--text-micro);
+    font-family: var(--font-mono);
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.history-url {
+    font-size: 12px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-family: var(--font-mono);
+    letter-spacing: 0.01em;
+}
+
+.history-timestamp {
+    font-size: 10px;
+    color: var(--text-micro);
+}
+
+/* ==========================================================================
+   15. EMPTY STATE
+   ========================================================================== */
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 20px 0;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.empty-icon {
+    font-size: 22px;
+    opacity: 0.5;
+}
+
+/* ==========================================================================
+   16. FOOTER
+   ========================================================================== */
+
+.popup-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    margin-top: 8px;
+}
+
+.footer-text {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: var(--weight-medium);
+}
+
+.footer-badge {
+    font-size: 10px;
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: var(--radius-full);
+    padding: 2px 8px;
+    letter-spacing: 0.05em;
+    font-weight: var(--weight-medium);
+    text-transform: uppercase;
+}
+
+/* ==========================================================================
+   17. HOVER STATES
+   ========================================================================== */
+
+.card:hover {
+    border-color: rgba(255, 255, 255, 0.11);
+}
+
+.vt-row:hover {
+    border-color: rgba(255, 255, 255, 0.11);
+}
+
+.threat-hero:hover {
+    border-color: rgba(255, 255, 255, 0.11);
+}
+
+.threat-hero.danger-state:hover {
+    border-color: rgba(255, 59, 59, 0.28);
+}
+
+/* ==========================================================================
+   18. BODY-LEVEL THREAT STATE COLORS
+   ========================================================================== */
+
+/* Caution */
+body.level-caution .ring-fill,
+body.level-caution .ring-score,
+body.level-caution .threat-level-value {
+    stroke: var(--warning);
+    color: var(--warning);
+}
+
+/* Suspicious */
+body.level-suspicious .ring-fill,
+body.level-suspicious .ring-score,
+body.level-suspicious .threat-level-value {
+    stroke: var(--suspicious);
+    color: var(--suspicious);
+}
+
+/* Dangerous */
+body.level-dangerous .ring-fill,
+body.level-dangerous .ring-score,
+body.level-dangerous .threat-level-value {
+    stroke: var(--dangerous);
+    color: var(--dangerous);
+}
+
+body.level-dangerous .pulse-dot {
+    background: var(--dangerous);
+}
+
+body.level-dangerous .protection-badge {
+    border-color: rgba(255, 59, 59, 0.3);
+    color: var(--dangerous);
+}
+
+body.level-caution .pulse-dot {
+    background: var(--warning);
+}
+
+body.level-caution .protection-badge {
+    border-color: rgba(245, 166, 35, 0.3);
+    color: var(--warning);
+}
+
+body.level-suspicious .pulse-dot {
+    background: var(--suspicious);
+}
+
+body.level-suspicious .protection-badge {
+    border-color: rgba(255, 107, 53, 0.3);
+    color: var(--suspicious);
+}
+
+/* ==========================================================================
+   19. SCANNING STATE
+   ========================================================================== */
+
+.site-card.scanning .site-url {
+    background: linear-gradient(
+        90deg,
+        rgba(0, 229, 191, 0.06) 0%,
+        rgba(0, 229, 191, 0.14) 40%,
+        rgba(0, 229, 191, 0.06) 80%
+    );
+    background-size: 200% 100%;
+    animation: shimmerLoad 1.6s infinite linear;
+    color: transparent;
+    border-radius: 4px;
+}
+
+/* ==========================================================================
+   20. FOCUS STYLES
+   ========================================================================== */
+
+:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+button:focus-visible {
+    outline: 2px solid var(--cyan);
+}
+
+/* ==========================================================================
+   21. REDUCED MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

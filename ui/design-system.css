@@ -1,0 +1,318 @@
+/* ==========================================================================
+   ShadowLink Design System v2
+   Minimal Dark UI — Space Grotesk — Pure Black
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap");
+
+/* ==========================================================================
+   1. DESIGN TOKENS
+   ========================================================================== */
+
+:root {
+    /* ── Backgrounds ── pure black stack, no navy */
+    --bg-void: #000000;
+    --bg-base: #080808;
+    --bg-surface: #0f0f0f;
+    --bg-elevated: #141414;
+    --bg-card: #111111;
+
+    /* ── Borders — extremely subtle ── */
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-dim: rgba(255, 255, 255, 0.1);
+    --border-active: rgba(255, 255, 255, 0.18);
+
+    /* ── Brand cyan ── */
+    --cyan: #00e5bf;
+    --cyan-dim: rgba(0, 229, 191, 0.12);
+    --cyan-glow: 0 0 16px rgba(0, 229, 191, 0.25);
+
+    /* ── Severity palette ── */
+    --safe: #00e5bf;
+    --safe-dim: rgba(0, 229, 191, 0.1);
+    --warning: #f5a623;
+    --warning-dim: rgba(245, 166, 35, 0.1);
+    --suspicious: #ff6b35;
+    --suspicious-dim: rgba(255, 107, 53, 0.1);
+    --dangerous: #ff3b3b;
+    --dangerous-dim: rgba(255, 59, 59, 0.1);
+
+    /* ── Text ── */
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-muted: rgba(255, 255, 255, 0.35);
+    --text-micro: rgba(255, 255, 255, 0.25);
+
+    /* ── Typography ── */
+    --font-sans: "Space Grotesk", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+    /* ── Type scale ── */
+    --text-xs: 10px;
+    --text-sm: 12px;
+    --text-base: 13px;
+    --text-md: 15px;
+    --text-lg: 18px;
+    --text-xl: 22px;
+    --text-2xl: 28px;
+
+    /* ── Font weights ── */
+    --weight-light: 300;
+    --weight-normal: 400;
+    --weight-medium: 500;
+    --weight-semibold: 600;
+    --weight-bold: 700;
+
+    /* ── Letter spacing ── */
+    --tracking-tight: -0.02em;
+    --tracking-normal: 0em;
+    --tracking-wide: 0.05em;
+    --tracking-wider: 0.1em;
+    --tracking-widest: 0.15em;
+
+    /* ── Spacing ── */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 20px;
+    --sp-6: 24px;
+    --sp-8: 32px;
+    --sp-10: 40px;
+    --sp-12: 48px;
+
+    /* ── Radius ── */
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
+    --radius-full: 9999px;
+
+    /* ── Shadows ── */
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-elevated:
+        0 2px 8px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.4);
+
+    /* ── Durations ── */
+    --dur-fast: 120ms;
+    --dur-normal: 220ms;
+    --dur-slow: 380ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ==========================================================================
+   2. KEYFRAMES
+   ========================================================================== */
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulseDot {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(0.85);
+    }
+}
+
+@keyframes ringDraw {
+    from {
+        stroke-dashoffset: 251;
+    }
+}
+
+@keyframes shimmerLoad {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+@keyframes slEntry {
+    from {
+        transform: translateX(110%) scale(0.97);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes slExit {
+    from {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(110%) scale(0.97);
+        opacity: 0;
+    }
+}
+
+@keyframes slShake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    20% {
+        transform: translateX(-4px);
+    }
+    40% {
+        transform: translateX(4px);
+    }
+    60% {
+        transform: translateX(-2px);
+    }
+    80% {
+        transform: translateX(2px);
+    }
+}
+
+@keyframes slRingPulse {
+    0%,
+    100% {
+        opacity: 0.4;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.9;
+        transform: scale(1.12);
+    }
+}
+
+/* ==========================================================================
+   3. UTILITY CLASSES
+   ========================================================================== */
+
+/* ── Card ── */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+}
+
+/* ── Label ── uppercase micro-label for section headers */
+.label {
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-widest);
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: var(--weight-medium);
+    font-family: var(--font-sans);
+}
+
+/* ── Mono ── */
+.mono {
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+}
+
+/* ── Truncate ── */
+.truncate {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+/* ── Badge base ── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    border: 1px solid transparent;
+    line-height: 1.6;
+    font-family: var(--font-sans);
+}
+
+.badge-safe {
+    background: var(--safe-dim);
+    color: var(--safe);
+    border-color: rgba(0, 229, 191, 0.25);
+}
+
+.badge-warning {
+    background: var(--warning-dim);
+    color: var(--warning);
+    border-color: rgba(245, 166, 35, 0.25);
+}
+
+.badge-suspicious {
+    background: var(--suspicious-dim);
+    color: var(--suspicious);
+    border-color: rgba(255, 107, 53, 0.25);
+}
+
+.badge-dangerous {
+    background: var(--dangerous-dim);
+    color: var(--dangerous);
+    border-color: rgba(255, 59, 59, 0.25);
+}
+
+/* ── Text color utilities ── */
+.text-primary {
+    color: var(--text-primary);
+}
+.text-secondary {
+    color: var(--text-secondary);
+}
+.text-muted {
+    color: var(--text-muted);
+}
+.text-cyan {
+    color: var(--cyan);
+}
+.text-safe {
+    color: var(--safe);
+}
+.text-warning {
+    color: var(--warning);
+}
+.text-suspicious {
+    color: var(--suspicious);
+}
+.text-dangerous {
+    color: var(--dangerous);
+}
+
+/* ── Shimmer loading skeleton ── */
+.shimmer {
+    background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0.03) 0%,
+        rgba(255, 255, 255, 0.08) 40%,
+        rgba(255, 255, 255, 0.03) 80%
+    );
+    background-size: 400% 100%;
+    animation: shimmerLoad 1.8s infinite linear;
+    border-radius: var(--radius-sm);
+}
+
+/* ── Divider ── */
+.divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border-subtle);
+    border: none;
+    margin: var(--sp-3) 0;
+}

@@ -1,87 +1,398 @@
+/* ==========================================================================
+   ShadowLink — warning.css v2
+   Pure black threat warning page — Space Grotesk — Minimal
+   ========================================================================== */
+
+/* ==========================================================================
+   0. DESIGN TOKENS
+   ========================================================================== */
+
+:root {
+    /* Backgrounds */
+    --bg-void: #000000;
+    --bg-surface: #0f0f0f;
+    --bg-card: #0f0f0f;
+
+    /* Brand cyan */
+    --cyan: #00e5bf;
+
+    /* Severity */
+    --dangerous: #ff3b3b;
+    --dangerous-dim: rgba(255, 59, 59, 0.1);
+
+    /* Text */
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --text-muted: rgba(255, 255, 255, 0.35);
+
+    /* Borders */
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-dim: rgba(255, 255, 255, 0.1);
+
+    /* Font */
+    --font-sans: "Space Grotesk", system-ui, -apple-system, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+    /* Radius */
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+}
+
+/* ==========================================================================
+   1. KEYFRAMES
+   ========================================================================== */
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes ringPulse {
+    0% {
+        transform: scale(1);
+        opacity: inherit;
+    }
+    70% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
+}
+
+/* ==========================================================================
+   2. RESET & BASE
+   ========================================================================== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* ==========================================================================
+   3. BODY — pitch black + subtle radial red top glow + grid
+   ========================================================================== */
+
 body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
 
-  margin: 0;
-
-  background:
-    linear-gradient(
-      145deg,
-      #09090f,
-      #111827
+    /* Pure black + very faint red haze at top */
+    background: radial-gradient(
+        ellipse at 50% -10%,
+        rgba(255, 59, 59, 0.06) 0%,
+        #000000 55%
     );
 
-  color: white;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
 
-  font-family:
-    Arial,
-    sans-serif;
-
-  height: 100vh;
-
-  display: flex;
-
-  justify-content: center;
-
-  align-items: center;
+    position: relative;
+    overflow-x: hidden;
 }
+
+/* Subtle repeating grid overlay */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+
+    background-image:
+        repeating-linear-gradient(
+            0deg,
+            rgba(255, 255, 255, 0.03) 0px,
+            rgba(255, 255, 255, 0.03) 1px,
+            transparent 1px,
+            transparent 48px
+        ),
+        repeating-linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.03) 0px,
+            rgba(255, 255, 255, 0.03) 1px,
+            transparent 1px,
+            transparent 48px
+        );
+    opacity: 1;
+}
+
+/* ==========================================================================
+   4. CARD
+   ========================================================================== */
 
 .card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 520px;
+    padding: 44px 40px;
+    border-radius: var(--radius-lg);
 
-  width: 480px;
+    background: #0f0f0f;
+    border: 1px solid rgba(255, 59, 59, 0.2);
 
-  padding: 40px;
+    /* Restrained shadow — no massive glow */
+    box-shadow:
+        0 0 0 1px rgba(255, 59, 59, 0.15),
+        0 20px 40px rgba(0, 0, 0, 0.8);
 
-  border-radius: 28px;
-
-  background:
-    rgba(15,23,42,0.95);
-
-  border:
-    2px solid #ff4d6d;
-
-  box-shadow:
-    0 0 40px #ff4d6d55;
-
-  text-align: center;
+    text-align: center;
+    animation: fadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.icon {
+/* ==========================================================================
+   5. DANGER RINGS — concentric, more subtle opacity
+   ========================================================================== */
 
-  width: 96px;
-
-  margin-bottom: 20px;
+.danger-ring-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 28px;
 }
 
+/* Base ring style */
+.ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1.5px solid var(--dangerous);
+    animation: ringPulse 2.6s ease-out infinite;
+}
+
+.ring-1 {
+    width: 60px;
+    height: 60px;
+    opacity: 0.5;
+    animation-delay: 0s;
+}
+
+.ring-2 {
+    width: 86px;
+    height: 86px;
+    opacity: 0.2;
+    animation-delay: 0.55s;
+}
+
+.ring-3 {
+    width: 112px;
+    height: 112px;
+    opacity: 0.08;
+    animation-delay: 1.1s;
+}
+
+/* Center warning icon */
+.center-icon {
+    position: relative;
+    z-index: 10;
+    font-size: 52px;
+    line-height: 1;
+}
+
+/* ==========================================================================
+   6. TYPOGRAPHY
+   ========================================================================== */
+
+/* "THREAT DETECTED" eyebrow */
+.eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--cyan);
+    margin-bottom: 8px;
+    font-family: var(--font-sans);
+}
+
+/* Main heading */
 h1 {
-
-  color: #ff4d6d;
-
-  font-size: 42px;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--dangerous);
+    line-height: 1.1;
+    margin: 8px 0;
+    font-family: var(--font-sans);
 }
 
-p {
-
-  margin-top: 20px;
-
-  font-size: 18px;
-
-  line-height: 1.7;
+/* Subtitle */
+.subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.65;
+    max-width: 420px;
+    margin: 0 auto;
+    font-family: var(--font-sans);
 }
 
-button {
+/* ==========================================================================
+   7. REASON / URL BOX
+   ========================================================================== */
 
-  margin-top: 30px;
+.reason-box {
+    margin: 20px 0;
+    padding: 12px 14px;
+    border-radius: 8px;
 
-  padding: 14px 28px;
+    background: #1a0000;
+    border: 1px solid rgba(255, 59, 59, 0.2);
+    border-left: 3px solid var(--dangerous);
 
-  border: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: rgba(255, 107, 107, 0.9);
+    line-height: 1.5;
+    word-break: break-all;
+    text-align: left;
+}
 
-  border-radius: 14px;
+/* ==========================================================================
+   8. INDICATOR LIST
+   ========================================================================== */
 
-  background: #ff4d6d;
+.indicator-list {
+    list-style: none;
+    text-align: left;
+    margin: 0 0 8px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
 
-  color: white;
+.indicator-list li {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+    padding: 4px 0 4px 18px;
+    position: relative;
+    font-family: var(--font-sans);
+}
 
-  font-size: 16px;
+/* Red dot bullet */
+.indicator-list li::before {
+    content: "";
+    position: absolute;
+    left: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--dangerous);
+}
 
-  cursor: pointer;
+/* ==========================================================================
+   9. BUTTON GROUP
+   ========================================================================== */
+
+.btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 28px;
+}
+
+/* Primary — Go Back */
+.btn-back {
+    width: 100%;
+    height: 44px;
+    border: none;
+    border-radius: var(--radius-md);
+
+    background: var(--dangerous);
+    color: #ffffff;
+
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.01em;
+
+    transition:
+        background 0.15s ease,
+        transform 0.12s ease;
+}
+
+.btn-back:hover {
+    background: #e03333;
+    transform: translateY(-1px);
+}
+
+.btn-back:active {
+    background: #cc2e2e;
+    transform: translateY(0);
+}
+
+/* Ghost — Proceed Anyway */
+.btn-proceed {
+    width: 100%;
+    height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: var(--radius-md);
+
+    background: transparent;
+    color: var(--text-muted);
+
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+
+    transition:
+        border-color 0.15s ease,
+        color 0.15s ease,
+        background 0.15s ease;
+}
+
+.btn-proceed:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* ==========================================================================
+   10. FOOTER TEXT
+   ========================================================================== */
+
+.footer-text {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 20px;
+    text-align: center;
+    letter-spacing: 0.03em;
+    font-family: var(--font-sans);
+}
+
+/* ==========================================================================
+   11. REDUCED MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

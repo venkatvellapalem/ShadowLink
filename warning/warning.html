@@ -1,38 +1,88 @@
-<!DOCTYPE html>
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ShadowLink — Threat Detected</title>
 
-<html>
+        <!-- Space Grotesk typeface -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
 
-<head>
+        <link rel="stylesheet" href="warning.css" />
+    </head>
 
-  <title>ShadowLink Warning</title>
+    <body>
+        <!-- ── Background decorative grid (pure CSS via ::before on body) ───── -->
 
-  <link rel="stylesheet"
-  href="warning.css">
+        <!-- ── Centered warning card ────────────────────────────────────────── -->
+        <div class="card" role="main" aria-label="Threat detected warning">
+            <!-- Concentric danger rings + icon -->
+            <div class="danger-ring-container" aria-hidden="true">
+                <div class="ring ring-3"></div>
+                <div class="ring ring-2"></div>
+                <div class="ring ring-1"></div>
+                <div class="center-icon">⚠️</div>
+            </div>
 
-</head>
+            <!-- "THREAT DETECTED" eyebrow label -->
+            <p class="eyebrow">Threat Detected</p>
 
-<body>
+            <!-- Main heading -->
+            <h1>Dangerous Website</h1>
 
-  <div class="card">
+            <!-- Subtitle -->
+            <p class="subtitle">
+                ShadowLink has blocked this page to protect you from a
+                potentially malicious destination.
+            </p>
 
-    <img
-    src="../assets/icons/red.png"
-    class="icon">
+            <!-- Blocked URL / reason box -->
+            <div class="reason-box" aria-label="Blocked URL">
+                <span id="blockedUrl">Loading URL…</span>
+            </div>
 
-    <h1>
-      Dangerous Website
-    </h1>
+            <!-- Threat indicators list -->
+            <ul
+                class="indicator-list"
+                id="indicatorList"
+                aria-label="Threat indicators"
+            >
+                <!-- Populated by warning.js -->
+            </ul>
 
-    <p id="reason"></p>
+            <!-- Action buttons -->
+            <div class="btn-group">
+                <button
+                    id="backBtn"
+                    class="btn-back"
+                    type="button"
+                    aria-label="Go back to safety"
+                >
+                    &#8592; Go Back to Safety
+                </button>
 
-    <button id="backBtn">
-      Go Back
-    </button>
+                <button
+                    id="proceedBtn"
+                    class="btn-proceed"
+                    type="button"
+                    aria-label="Proceed to dangerous site anyway"
+                >
+                    Proceed Anyway (Not Recommended)
+                </button>
+            </div>
 
-  </div>
+            <!-- Footer attribution -->
+            <p class="footer-text">
+                Protected by ShadowLink AI &nbsp;·&nbsp; VirusTotal Intelligence
+            </p>
+        </div>
+        <!-- /.card -->
 
-  <script src="warning.js"></script>
-
-</body>
-
+        <script src="warning.js"></script>
+    </body>
 </html>

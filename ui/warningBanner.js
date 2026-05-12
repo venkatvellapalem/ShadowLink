@@ -1,95 +1,124 @@
+/* ==========================================================================
+   ShadowLink — warningBanner.js
+   Minimal Floating Shield Widget — Live Threat Status Indicator
+   ========================================================================== */
+
 function showWarningBanner(result) {
+  /* ── Remove any existing banner first ─────────────────────────────────── */
+  const existing = document.getElementById("shadowlink-banner");
+  if (existing) existing.remove();
 
-  const existingBanner =
-    document.getElementById("shadowlink-banner");
+  /* ── Only render for non-safe threat levels ────────────────────────────── */
+  if (!result || result.threatLevel === "Safe") return;
 
-  if (existingBanner) {
-    existingBanner.remove();
+  /* ── Severity colour map ───────────────────────────────────────────────── */
+  const COLORS = {
+    Warning: {
+      color: "#F59E0B",
+      glow: "rgba(245,158,11,0.25)",
+    },
+    Caution: {
+      color: "#F59E0B",
+      glow: "rgba(245,158,11,0.25)",
+    },
+    Suspicious: {
+      color: "#F97316",
+      glow: "rgba(249,115,22,0.3)",
+    },
+    Dangerous: {
+      color: "#EF4444",
+      glow: "rgba(239,68,68,0.35)",
+    },
+  };
+
+  const cfg = COLORS[result.threatLevel] || COLORS.Caution;
+
+  /* ── Inject keyframes once, guarded by id ──────────────────────────────── */
+  if (!document.getElementById("sl-banner-styles")) {
+    const style = document.createElement("style");
+    style.id = "sl-banner-styles";
+    style.textContent = `
+      @keyframes slBannerIn {
+        from { transform: translateY(20px); opacity: 0; }
+        to   { transform: translateY(0);    opacity: 1; }
+      }
+      #shadowlink-banner:hover {
+        transform: translateY(-2px) !important;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
-  const banner = document.createElement("div");
+  /* ── Create widget element ─────────────────────────────────────────────── */
+  const widget = document.createElement("div");
+  widget.id = "shadowlink-banner";
 
-  banner.id = "shadowlink-banner";
-
-  let borderColor = "#00FFB2";
-
-  if (result.threatLevel === "Suspicious") {
-    borderColor = "#FFD93D";
-  }
-
-  if (result.threatLevel === "Dangerous") {
-    borderColor = "#FF4D6D";
-  }
-
-  banner.innerHTML = `
-  
-    <div style="
-      font-size:18px;
-      font-weight:bold;
-      margin-bottom:10px;
-    ">
-      ShadowLink
-    </div>
-
-    <div style="margin-bottom:8px;">
-
-      Threat Level:
-
-      <span style="
-        color:${borderColor};
-        font-weight:bold;
-      ">
-        ${result.threatLevel}
-      </span>
-
-    </div>
-
-    <div style="margin-bottom:8px;">
-      Risk Score: ${result.score}
-    </div>
-
-    <div style="
-      font-size:13px;
-      opacity:0.9;
-    ">
-
-      ${result.indicators.join("<br>")}
-
-    </div>
+  widget.style.cssText = `
+    position:                fixed;
+    bottom:                  20px;
+    right:                   20px;
+    background:              rgba(7,11,26,0.9);
+    backdrop-filter:         blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border:                  1.5px solid ${cfg.color};
+    border-radius:           14px;
+    padding:                 12px 16px;
+    z-index:                 2147483646;
+    color:                   white;
+    font-family:             'Inter', Arial, sans-serif;
+    font-size:               13px;
+    box-shadow:              0 0 24px ${cfg.glow},
+                             0 4px 16px rgba(0,0,0,0.5);
+    display:                 flex;
+    align-items:             center;
+    gap:                     10px;
+    cursor:                  pointer;
+    transition:              transform 0.2s ease;
+    animation:               slBannerIn 0.3s cubic-bezier(0.16,1,0.3,1) forwards;
+    user-select:             none;
   `;
 
-  banner.style.position = "fixed";
-  banner.style.top = "20px";
-  banner.style.right = "20px";
+  /* ── Widget inner markup ───────────────────────────────────────────────── */
+  widget.innerHTML = `
+    <span style="font-size:18px;line-height:1;flex-shrink:0;">🛡️</span>
 
-  banner.style.width = "320px";
+    <div style="flex:1;min-width:0;">
+      <div style="
+        font-weight:    700;
+        color:          ${cfg.color};
+        font-size:      13px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        line-height:    1.2;
+      ">${result.threatLevel}</div>
+      <div style="
+        font-size:   11px;
+        opacity:     0.5;
+        margin-top:  2px;
+        line-height: 1.2;
+      ">ShadowLink Detection</div>
+    </div>
 
-  banner.style.zIndex = "999999";
+    <span style="
+      flex-shrink: 0;
+      margin-left: 4px;
+      opacity:     0.35;
+      font-size:   15px;
+      line-height: 1;
+      transition:  opacity 0.15s ease;
+    ">✕</span>
+  `;
 
-  banner.style.background =
-    "rgba(5,8,22,0.95)";
+  /* ── Dismiss on click — slide down and fade out ────────────────────────── */
+  widget.addEventListener("click", () => {
+    widget.style.transition = "transform 0.3s ease, opacity 0.3s ease";
+    widget.style.transform = "translateY(20px)";
+    widget.style.opacity = "0";
+    setTimeout(() => {
+      if (widget.parentNode) widget.remove();
+    }, 300);
+  });
 
-  banner.style.backdropFilter =
-    "blur(10px)";
-
-  banner.style.color = "#E6F1FF";
-
-  banner.style.padding = "18px";
-
-  banner.style.border =
-    `2px solid ${borderColor}`;
-
-  banner.style.borderRadius = "14px";
-
-  banner.style.boxShadow =
-    `0 0 25px ${borderColor}55`;
-
-  banner.style.fontFamily =
-    "Arial, sans-serif";
-
-  banner.style.fontSize = "14px";
-
-  banner.style.lineHeight = "1.5";
-
-  document.body.appendChild(banner);
+  /* ── Mount ─────────────────────────────────────────────────────────────── */
+  document.body.appendChild(widget);
 }

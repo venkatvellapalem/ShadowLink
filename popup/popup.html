@@ -1,128 +1,227 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ShadowLink — AI Threat Intelligence</title>
 
-<head>
+        <!-- Google Fonts: Space Grotesk -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
 
-  <meta charset="UTF-8">
+        <!-- ShadowLink Design System -->
+        <link rel="stylesheet" href="../ui/design-system.css" />
 
-  <title>ShadowLink</title>
+        <!-- Popup Styles -->
+        <link rel="stylesheet" href="popup.css" />
+    </head>
 
-  <link rel="stylesheet" href="popup.css">
+    <body>
+        <!-- =====================================================================
+       HEADER — Brand + Protection Status
+       ===================================================================== -->
+        <header class="header">
+            <div class="header-brand">
+                <div class="shield-icon" id="shieldIcon">🛡</div>
+                <div class="brand-text">
+                    <div class="brand-name">ShadowLink</div>
+                    <div class="brand-tagline">AI Threat Intelligence</div>
+                </div>
+            </div>
 
-</head>
+            <div class="protection-badge" id="protectionBadge">
+                <span class="pulse-dot" id="pulseDot"></span>
+                <span id="protectionStatus">Protected</span>
+            </div>
+        </header>
 
-<body>
+        <!-- =====================================================================
+       SITE ANALYSIS CARD
+       ===================================================================== -->
+        <section class="card site-card">
+            <div class="card-label">ANALYZING</div>
 
-  <div class="container">
+            <div class="site-url truncate" id="site">Scanning...</div>
 
-    <h1>ShadowLink</h1>
+            <div class="site-meta">
+                <span class="meta-item" id="domainAge">— Domain Age</span>
+                <span class="meta-divider">·</span>
+                <span class="meta-item" id="protocol">HTTPS</span>
+            </div>
+        </section>
 
-    <div class="status">
-      Protection Active
-    </div>
+        <!-- =====================================================================
+       THREAT LEVEL HERO — Score Ring + Level Label
+       ===================================================================== -->
+        <section class="threat-hero glass" id="threatHero">
+            <!-- Circular Progress Ring -->
+            <div class="threat-score-ring" id="scoreRing">
+                <svg viewBox="0 0 100 100" class="ring-svg" aria-hidden="true">
+                    <!-- Track -->
+                    <circle class="ring-bg" cx="50" cy="50" r="40" />
+                    <!-- Fill arc — dashoffset controlled by JS -->
+                    <circle
+                        class="ring-fill"
+                        id="ringFill"
+                        cx="50"
+                        cy="50"
+                        r="40"
+                    />
+                </svg>
 
-    <!-- Current Site -->
+                <!-- Center label -->
+                <div class="ring-inner">
+                    <div class="ring-score" id="riskScore">0</div>
+                    <div class="ring-label">RISK</div>
+                </div>
+            </div>
 
-    <div class="card">
+            <!-- Threat level text -->
+            <div class="threat-info">
+                <div class="threat-level-label">THREAT LEVEL</div>
+                <div class="threat-level-value" id="threatLevel">Safe</div>
+                <div class="threat-sublabel" id="threatSublabel">
+                    No threats detected
+                </div>
+            </div>
+        </section>
 
-      <div class="label">
-        Current Site
-      </div>
+        <!-- =====================================================================
+       VIRUSTOTAL STATS ROW
+       ===================================================================== -->
+        <section class="vt-row glass" id="vtRow">
+            <div class="vt-stat" id="vtClean">
+                <div class="vt-num" id="vtCleanNum">—</div>
+                <div class="vt-lbl">Clean</div>
+            </div>
 
-      <div id="site">
-        Loading...
-      </div>
+            <div class="vt-stat vt-stat-danger" id="vtMalicious">
+                <div class="vt-num" id="vtMaliciousNum">—</div>
+                <div class="vt-lbl">Malicious</div>
+            </div>
 
-    </div>
+            <div class="vt-stat vt-stat-caution" id="vtSuspicious">
+                <div class="vt-num" id="vtSuspiciousNum">—</div>
+                <div class="vt-lbl">Suspicious</div>
+            </div>
 
-    <!-- Threat Level -->
+            <div class="vt-stat" id="vtUndetected">
+                <div class="vt-num" id="vtUndetectedNum">—</div>
+                <div class="vt-lbl">Undetected</div>
+            </div>
+        </section>
 
-    <div class="card">
+        <!-- =====================================================================
+       ACTIVE MODULES CHIPS
+       ===================================================================== -->
+        <section class="modules-row" aria-label="Active detection modules">
+            <div class="module-chip active" title="URL Structure Analysis">
+                URL
+            </div>
+            <div class="module-chip active" title="VirusTotal Reputation">
+                VT
+            </div>
+            <div class="module-chip active" title="Homoglyph / IDN Detection">
+                HMG
+            </div>
+            <div class="module-chip active" title="Login Form Detection">
+                LOGIN
+            </div>
+            <div class="module-chip active" title="Domain Age Lookup">AGE</div>
+            <div class="module-chip active" title="TLD Risk Analysis">TLD</div>
+        </section>
 
-      <div class="label">
-        Threat Level
-      </div>
+        <!-- =====================================================================
+       THREAT BREAKDOWN CARD
+       ===================================================================== -->
+        <section class="card breakdown-card" id="breakdownCard">
+            <div class="card-label">THREAT BREAKDOWN</div>
 
-      <div id="threatLevel">
-        Safe
-      </div>
+            <div id="breakdown" class="breakdown-list">
+                <div class="no-threat-msg">
+                    <span class="no-threat-icon">✓</span>
+                    All checks passed
+                </div>
+            </div>
+        </section>
 
-    </div>
+        <!-- =====================================================================
+       TAB NAVIGATION
+       ===================================================================== -->
+        <nav class="tab-nav" role="tablist" aria-label="Popup sections">
+            <button
+                class="tab-btn active"
+                data-tab="evidence"
+                role="tab"
+                aria-selected="true"
+                aria-controls="tab-evidence"
+            >
+                Evidence
+            </button>
+            <button
+                class="tab-btn"
+                data-tab="history"
+                role="tab"
+                aria-selected="false"
+                aria-controls="tab-history"
+            >
+                History
+            </button>
+        </nav>
 
-    <!-- Risk Score -->
+        <!-- =====================================================================
+       TAB PANEL: Evidence
+       ===================================================================== -->
+        <section
+            class="tab-panel active"
+            id="tab-evidence"
+            role="tabpanel"
+            aria-labelledby="tab-btn-evidence"
+        >
+            <div class="card">
+                <div class="card-label">CAPTURED EVIDENCE</div>
+                <div id="screenshots" class="screenshots-grid">
+                    <div class="empty-state">
+                        <div class="empty-icon">📷</div>
+                        <div>No evidence captured</div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    <div class="card">
+        <!-- =====================================================================
+       TAB PANEL: History
+       ===================================================================== -->
+        <section
+            class="tab-panel"
+            id="tab-history"
+            role="tabpanel"
+            aria-labelledby="tab-btn-history"
+        >
+            <div class="card">
+                <div class="card-label">RECENT DETECTIONS</div>
+                <div id="history" class="history-list">
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <div>No threats detected</div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-      <div class="label">
-        Risk Score
-      </div>
+        <!-- =====================================================================
+       FOOTER
+       ===================================================================== -->
+        <footer class="popup-footer">
+            <span class="footer-text">ShadowLink v1.0</span>
+            <span class="footer-badge">AI-Powered</span>
+        </footer>
 
-      <div id="riskScore">
-        0
-      </div>
-
-    </div>
-
-    <!-- Indicators -->
-
-    <div class="card">
-
-      <div class="label">
-        Indicators
-      </div>
-
-      <div id="indicators">
-        None
-      </div>
-
-    </div>
-
-    <!-- Threat Breakdown -->
-
-    <div class="card">
-
-      <div class="label">
-        Threat Breakdown
-      </div>
-
-      <div id="breakdown">
-        None
-      </div>
-
-    </div>
-
-    <!-- Captured Evidence -->
-
-    <div class="card">
-
-      <div class="label">
-        Captured Evidence
-      </div>
-
-      <div id="screenshots">
-        No screenshots captured.
-      </div>
-
-    </div>
-
-    <!-- Recent Threats -->
-
-    <div class="card">
-
-      <div class="label">
-        Recent Threats
-      </div>
-
-      <div id="history">
-        No threats detected.
-      </div>
-
-    </div>
-
-  </div>
-
-  <script src="popup.js"></script>
-
-</body>
-
+        <!-- Popup Logic -->
+        <script src="popup.js"></script>
+    </body>
 </html>
