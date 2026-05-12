@@ -41,11 +41,27 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
 
 /** @type {Record<string, ThreatConfig>} */
 const THREAT_CONFIGS = {
-  Safe: { color: "#00F5D4", label: "No threats detected" },
-  Warning: { color: "#F59E0B", label: "Minor issues detected" },
-  Caution: { color: "#F59E0B", label: "Proceed with caution" },
-  Suspicious: { color: "#F97316", label: "Suspicious activity detected" },
-  Dangerous: { color: "#EF4444", label: "Dangerous — do not proceed" },
+
+  Safe: {
+    color: "#00F5D4",
+    label: "No threats detected"
+  },
+
+  Suspicious: {
+    color: "#FACC15",
+    label: "Suspicious activity detected"
+  },
+
+  Critical: {
+    color: "#F97316",
+    label: "Critical threat detected"
+  },
+
+  Dangerous: {
+    color: "#EF4444",
+    label: "Dangerous — do not proceed"
+  }
+
 };
 
 /**
@@ -74,7 +90,14 @@ function applyThreatStyling(threatLevel, score) {
   // --- Numeric risk score ---
   const scoreEl = document.getElementById("riskScore");
   if (scoreEl) {
-    scoreEl.textContent = Math.min(score, 999);
+    const riskPercent =
+    Math.min(
+        Math.round((score / 150) * 100),
+        100
+    );
+
+scoreEl.textContent =
+    `${riskPercent}%`;
     scoreEl.style.color = cfg.color;
   }
 
@@ -219,15 +242,21 @@ function renderScreenshots(screenshots) {
 
   container.innerHTML = screenshots
     .map((item) => {
-      // Truncate long URLs to 50 chars for display
-      const displayUrl =
-        item.url.length > 50 ? item.url.substring(0, 47) + "..." : item.url;
+      let displayUrl = item.url || "";
+      try {
+        const u = new URL(item.url);
+        displayUrl = u.hostname + u.pathname.substring(0, 28);
+      } catch {
+        displayUrl = item.url.substring(0, 40);
+      }
 
       return `
-        <div class="screenshot-item">
-          <img src="${item.screenshot}" alt="Captured evidence screenshot" />
-          <div class="screenshot-meta">${displayUrl}</div>
-          <div class="screenshot-time">${item.timestamp}</div>
+        <div class="evidence-item">
+          <img class="evidence-thumb" src="${item.screenshot}" alt="Evidence screenshot" />
+          <div class="evidence-info">
+            <div class="evidence-url" title="${item.url}">${displayUrl}</div>
+            <div class="evidence-time">${item.timestamp}</div>
+          </div>
         </div>`;
     })
     .join("");
@@ -239,10 +268,10 @@ function renderScreenshots(screenshots) {
 
 /** Colour map for threat level badges in the history list */
 const HISTORY_COLORS = {
-  Warning: "#F59E0B",
-  Caution: "#F59E0B",
-  Suspicious: "#F97316",
-  Dangerous: "#EF4444",
+  Safe: "#00F5D4",
+  Suspicious: "#FACC15",
+  Critical: "#F97316",
+  Dangerous: "#EF4444"
 };
 
 /**
@@ -284,35 +313,200 @@ function renderHistory(history) {
 }
 
 // =============================================================================
+// THREAT TIMELINE RENDERER
+// =============================================================================
+
+/**
+ * renderTimeline(timeline)
+ * @param {{ id: number, threatLevel: string, score: number, url: string,
+ *           hostname: string, category: string, timestamp: string }[]} timeline
+ */
+function renderTimeline(timeline) {
+  const container = document.getElementById("timeline");
+  if (!container) return;
+
+  if (!timeline || timeline.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📡</div>
+        <div>No threats recorded</div>
+      </div>`;
+    return;
+  }
+
+  const levelClass = {
+  Suspicious: "suspicious",
+  Critical: "critical",
+  Dangerous: "dangerous",
+  Safe: "safe"
+};
+
+  container.innerHTML = timeline
+    .map((item, idx) => {
+      const cls = levelClass[item.threatLevel] || "warning";
+      let displayHost = item.hostname || item.url || "";
+      if (displayHost.length > 35)
+        displayHost = displayHost.substring(0, 32) + "…";
+      const isLast = idx === timeline.length - 1;
+
+      return `
+      <div class="timeline-item">
+        <div class="timeline-dot-col">
+          <div class="timeline-dot ${cls}"></div>
+          ${!isLast ? '<div class="timeline-line"></div>' : ""}
+        </div>
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <span class="timeline-category">${item.category || item.threatLevel}</span>
+            <span class="timeline-score">+${item.score}</span>
+          </div>
+          <div class="timeline-url" title="${item.url}">${displayHost}</div>
+          <div class="timeline-time">${item.timestamp}</div>
+          <span class="timeline-badge ${cls}">${item.threatLevel}</span>
+        </div>
+      </div>`;
+    })
+    .join("");
+}
+
+// =============================================================================
 // MAIN INIT — runs when popup.html finishes loading
 // =============================================================================
 
-chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-  const tab = tabs[0];
-  if (!tab) return;
+// Show scanning state immediately while data loads
+const breakdownEl = document.getElementById("breakdown");
+if (breakdownEl) {
+  breakdownEl.innerHTML = `<div class="scanning-msg"><span class="scanning-dot"></span><span class="scanning-dot"></span><span class="scanning-dot"></span></div>`;
+}
+
+chrome.tabs.query(
+    {
+        active: true,
+        currentWindow: true
+    },
+    (tabs) => {
+
+        const tab = tabs[0];
+
+        if (!tab) return;
+
+        /*
+        |--------------------------------------------------------------------------
+        | REAL URL EXTRACTION
+        |--------------------------------------------------------------------------
+        */
+
+        let analyzedUrl =
+    tab.url || "";
+
+        let warningBreakdown = [];
+
+        /*
+        |--------------------------------------------------------------------------
+        | If user is on ShadowLink warning page,
+        | extract ORIGINAL malicious URL
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            analyzedUrl.includes(
+                "/warning/warning.html"
+            )
+        ) {
+            try {
+
+                const parsed =
+                    new URL(analyzedUrl);
+
+                /*
+                |--------------------------------------------------------------------------
+                | Real blocked URL
+                |--------------------------------------------------------------------------
+                */
+
+                const realUrl =
+                    parsed.searchParams.get(
+                        "url"
+                    );
+
+                if (realUrl) {
+                    analyzedUrl =
+                        decodeURIComponent(
+                            realUrl
+                        );
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | Extract indicators from warning page
+                |--------------------------------------------------------------------------
+                */
+
+                const reasonParam =
+                    parsed.searchParams.get(
+                        "reason"
+                    );
+
+                if (reasonParam) {
+
+                    warningBreakdown =
+                        reasonParam
+                            .split("|")
+                            .map((r) => r.trim())
+                            .filter(Boolean)
+                            .map((reason) => ({
+                                reason,
+                                points: 25
+                            }));
+                }
+
+            } catch (err) {
+
+                console.warn(
+                    "[ShadowLink] Warning parse failed:",
+                    err
+                );
+            }
+        }
+
+        console.log(
+            "[ShadowLink] Final analyzed URL:",
+            analyzedUrl
+        );
 
   // --- Display the current site URL (truncated) ---
   const siteEl = document.getElementById("site");
   if (siteEl) {
     try {
-      const parsed = new URL(tab.url);
+      const parsed = new URL(analyzedUrl);
       // Show hostname + up to 30 chars of path
       siteEl.textContent = parsed.hostname + parsed.pathname.substring(0, 30);
     } catch {
-      siteEl.textContent = tab.url.substring(0, 50);
+      siteEl.textContent = analyzedUrl.substring(0, 50);
     }
   }
 
   // --- Protocol badge (HTTPS / HTTP) — hoisted so executeScript closure can refine it ---
   const protoEl = document.getElementById("protocol");
-  if (protoEl) {
-    const isHttps = tab.url.startsWith("https");
-    protoEl.textContent = isHttps ? "HTTPS" : "HTTP";
-    protoEl.style.color = isHttps
-      ? "var(--cyan, #00E5BF)"
-      : "var(--warning, #F5A623)";
-    protoEl.dataset.fromTab = "1";
-  }
+
+if (protoEl) {
+
+  const isHttps = analyzedUrl.startsWith("https");
+
+  protoEl.textContent = isHttps ? "HTTPS" : "HTTP";
+
+  protoEl.classList.remove("https", "http");
+
+  protoEl.classList.add(
+    isHttps ? "https" : "http"
+  );
+
+  protoEl.style.color = isHttps
+    ? "var(--cyan, #00E5BF)"
+    : "var(--warning, #F5A623)";
+
+  protoEl.dataset.fromTab = "1";
+}
 
   // --- Read analysis result stored on window by content.js ---
   chrome.scripting.executeScript(
@@ -322,47 +516,384 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     },
     (results) => {
       if (chrome.runtime.lastError) {
-        // executeScript fails on restricted pages (chrome://, PDF, etc.)
-        console.warn(
-          "[ShadowLink Popup] executeScript error:",
-          chrome.runtime.lastError.message,
-        );
-        applyThreatStyling("Safe", 0);
-        renderBreakdown([]);
-        return;
-      }
 
-      const data = results?.[0]?.result;
+    console.warn(
+        "[ShadowLink Popup] executeScript error:",
+        chrome.runtime.lastError.message,
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | WARNING PAGE FALLBACK
+    |--------------------------------------------------------------------------
+    | executeScript fails on chrome-extension:// warning pages.
+    | So reconstruct threat data directly from warning URL params.
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        tab.url &&
+        tab.url.includes(
+            "/warning/warning.html"
+        )
+    ) {
+
+        let warningScore = 75;
+
+        if (warningBreakdown.length > 0) {
+
+            warningScore =
+                warningBreakdown.reduce(
+                    (sum, item) =>
+                        sum + item.points,
+                    0
+                );
+        }
+
+        warningScore =
+            Math.max(warningScore, 75);
+
+        let warningLevel =
+            "Dangerous";
+
+        if (warningScore >= 90) {
+            warningLevel = "Dangerous";
+        }
+        else if (warningScore >= 60) {
+            warningLevel = "Critical";
+        }
+        else if (warningScore >= 25) {
+            warningLevel = "Suspicious";
+        }
+        else {
+            warningLevel = "Safe";
+        }
+
+        applyThreatStyling(
+            warningLevel,
+            warningScore
+        );
+
+        renderBreakdown(
+            warningBreakdown
+        );
+
+        renderVTStats(
+            null,
+            null
+        );
+
+        return;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | NON-WARNING PAGE FALLBACK
+    |--------------------------------------------------------------------------
+    */
+
+    applyThreatStyling(
+        "Safe",
+        0
+    );
+
+    renderBreakdown([]);
+
+    return;
+}
+
+      let data = results?.[0]?.result;
+
+/*
+|--------------------------------------------------------------------------
+| OVERRIDE CONTENT-SCRIPT RESULT
+| If we're on ShadowLink warning page,
+| popup must trust warning indicators instead.
+|--------------------------------------------------------------------------
+*/
+
+if (
+    tab.url &&
+    tab.url.includes(
+        "/warning/warning.html"
+    )
+) {
+    let warningScore = 75;
+
+/*
+|--------------------------------------------------------------------------
+| If indicators exist,
+| calculate dynamic score
+|--------------------------------------------------------------------------
+*/
+
+if (warningBreakdown.length > 0) {
+
+    warningScore =
+        warningBreakdown.reduce(
+            (sum, item) =>
+                sum + item.points,
+            0
+        );
+}
+
+/*
+|--------------------------------------------------------------------------
+| Force dangerous minimum
+| because warning page itself means blocked threat
+|--------------------------------------------------------------------------
+*/
+
+warningScore =
+    Math.max(warningScore, 75);
+
+let warningLevel =
+    "Dangerous";
+
+if (warningScore >= 90) {
+    warningLevel = "Dangerous";
+}
+else if (warningScore >= 60) {
+    warningLevel = "Critical";
+}
+else if (warningScore >= 25) {
+    warningLevel = "Suspicious";
+}
+else {
+    warningLevel = "Safe";
+}
+
+    data = {
+        score: warningScore,
+        threatLevel: warningLevel,
+        breakdown:
+    warningBreakdown.length > 0
+        ? warningBreakdown
+        : [
+            {
+                reason:
+                    "Malicious page blocked by ShadowLink",
+                points: warningScore
+            }
+        ],
+        vtStats: null,
+        domainAgeDays: null
+    };
+}
 
       if (data) {
-        applyThreatStyling(data.threatLevel, data.score);
-        renderBreakdown(data.breakdown);
-        renderVTStats(data.vtStats, data.domainAgeDays);
+        let finalBreakdown =
+    data.breakdown || [];
+
+if (warningBreakdown.length > 0) {
+    finalBreakdown =
+        warningBreakdown;
+}
+
+applyThreatStyling(
+    data.threatLevel,
+    data.score
+);
+
+renderBreakdown(
+    finalBreakdown
+);
+
+renderVTStats(
+    data.vtStats,
+    data.domainAgeDays
+);
       } else {
-        // Content script hasn't finished yet or the page is restricted
-        applyThreatStyling("Safe", 0);
-        renderBreakdown([]);
+        // Content script didn't run (DNS error, blocked page, etc.)
+        // Run a lightweight URL-only analysis from the popup side
+        try {
+          const tabUrl = analyzedUrl;
+          const hostname = new URL(tabUrl).hostname
+            .toLowerCase()
+            .replace(/^www\./, "");
+          const label = hostname.split(".")[0];
+
+          // Quick homoglyph check inline
+          const brands = [
+            "google",
+            "paypal",
+            "microsoft",
+            "facebook",
+            "apple",
+            "amazon",
+            "instagram",
+            "netflix",
+            "twitter",
+            "linkedin",
+            "github",
+          ];
+
+          function qLev(a, b) {
+            const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+            for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+            for (let i = 1; i <= a.length; i++)
+              for (let j = 1; j <= b.length; j++)
+                dp[i][j] =
+                  a[i - 1] === b[j - 1]
+                    ? dp[i - 1][j - 1]
+                    : 1 +
+                      Math.min(dp[i - 1][j - 1], dp[i][j - 1], dp[i - 1][j]);
+            return dp[a.length][b.length];
+          }
+
+          function qNorm(s) {
+            return s
+              .toLowerCase()
+              .replace(/0/g, "o")
+              .replace(/1/g, "l")
+              .replace(/3/g, "e")
+              .replace(/5/g, "s");
+          }
+
+          let fallbackScore = 0;
+          const fallbackBreakdown = [];
+
+          if (tabUrl.startsWith("http://")) {
+            fallbackScore += 15;
+            fallbackBreakdown.push({
+              points: 15,
+              reason: "Unencrypted connection (HTTP)",
+            });
+          }
+
+          const normLabel = qNorm(label);
+          for (const brand of brands) {
+            const normBrand = qNorm(brand);
+            if (normLabel === normBrand) continue;
+            if (
+              hostname === brand + ".com" ||
+              hostname.endsWith("." + brand + ".com")
+            )
+              continue;
+            const dist = qLev(normLabel, normBrand);
+            const maxD = Math.min(Math.floor(normBrand.length * 0.25), 2);
+            if (dist >= 1 && dist <= maxD) {
+              fallbackScore += 60;
+              fallbackBreakdown.push({
+                points: 60,
+                reason: `Possible homoglyph attack targeting: ${brand} (detected: ${label})`,
+              });
+              break;
+            }
+          }
+
+          const suspTLDs = [
+            ".xyz",
+            ".top",
+            ".click",
+            ".tk",
+            ".gq",
+            ".ml",
+            ".cf",
+            ".ga",
+            ".work",
+            ".buzz",
+          ];
+          for (const tld of suspTLDs) {
+            if (hostname.endsWith(tld)) {
+              fallbackScore += 20;
+              fallbackBreakdown.push({
+                points: 20,
+                reason: `Suspicious TLD: ${tld}`,
+              });
+              break;
+            }
+          }
+
+          let fallbackLevel = "Safe";
+          if (fallbackScore >= 100) fallbackLevel = "Dangerous";
+          else if (fallbackScore >= 60) fallbackLevel = "Suspicious";
+          else if (fallbackScore >= 30) fallbackLevel = "Warning";
+
+          applyThreatStyling(fallbackLevel, fallbackScore);
+          renderBreakdown(fallbackBreakdown);
+
+          // Update icon
+          if (fallbackLevel !== "Safe") {
+            const iconMap = {
+
+  Safe: "green",
+
+  Suspicious: "yellow",
+
+  Critical: "orange",
+
+  Dangerous: "red"
+
+};
+            chrome.action.setIcon({
+              path: { 128: `../assets/icons/${iconMap[fallbackLevel]}.png` },
+              tabId: tab.id,
+            });
+          }
+        } catch {
+          applyThreatStyling("Safe", 0);
+          renderBreakdown([]);
+        }
       }
 
       // Refine protocol display from content script's window.location.protocol
-      // (more accurate than tab.url for pages with bad/self-signed certificates)
+      // (more accurate than analyzedUrl for pages with bad/self-signed certificates)
       if (data?.protocol && protoEl) {
-        const isHttps = data.protocol === "https:";
-        protoEl.textContent = isHttps ? "HTTPS" : "HTTP";
-        protoEl.style.color = isHttps
-          ? "var(--cyan, #00E5BF)"
-          : "var(--warning, #F5A623)";
-        delete protoEl.dataset.fromTab;
-      }
+
+  const isHttps =
+    data.protocol === "https:";
+
+  protoEl.textContent =
+    isHttps ? "HTTPS" : "HTTP";
+
+  protoEl.classList.remove(
+    "https",
+    "http"
+  );
+
+  protoEl.classList.add(
+    isHttps ? "https" : "http"
+  );
+
+  protoEl.style.color = isHttps
+    ? "var(--cyan, #00E5BF)"
+    : "var(--warning, #F5A623)";
+
+  delete protoEl.dataset.fromTab;
+}
     },
   );
 });
 
 // --- Load persisted screenshots and history from storage ---
 chrome.storage.local.get(
-  ["shadowlinkScreenshots", "shadowlinkHistory"],
+  ["shadowlinkScreenshots", "shadowlinkHistory", "shadowlinkTimeline"],
   (data) => {
     renderScreenshots(data.shadowlinkScreenshots || []);
     renderHistory(data.shadowlinkHistory || []);
+    renderTimeline(data.shadowlinkTimeline || []);
   },
 );
+
+// Clear timeline button
+const clearBtn = document.getElementById("clearTimeline");
+if (clearBtn) {
+  clearBtn.addEventListener("click", () => {
+    chrome.storage.local.remove(["shadowlinkTimeline"], () => {
+      renderTimeline([]);
+    });
+  });
+}
+
+const protocolElement = document.getElementById("protocol");
+
+if (url.startsWith("https://")) {
+    protocolElement.textContent = "HTTPS";
+    protocolElement.classList.add("https");
+    protocolElement.classList.remove("http");
+} else {
+    protocolElement.textContent = "HTTP";
+    protocolElement.classList.add("http");
+    protocolElement.classList.remove("https");
+}

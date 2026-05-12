@@ -1,48 +1,248 @@
 async function checkVirusTotal(url) {
+
   try {
-    const response = await fetch(
-      `https://shadowlink-api.vercel.app/api/check?url=${encodeURIComponent(url)}`,
-    );
+
+    const controller =
+      new AbortController();
+
+    const timeout =
+      setTimeout(() => {
+
+        controller.abort();
+
+      }, 10000);
+
+    const response =
+      await fetch(
+
+        `https://shadowlink-api.vercel.app/api/check?url=${encodeURIComponent(url)}`,
+
+        {
+          signal:
+            controller.signal
+        }
+      );
+
+    clearTimeout(timeout);
+
+    /*
+      HTTP error handling
+    */
 
     if (!response.ok) {
-      console.warn("[ShadowLink] VT API returned:", response.status);
+
+      console.warn(
+
+        "[ShadowLink] VT API returned:",
+
+        response.status
+      );
+
       return null;
     }
 
-    const data = await response.json();
-    console.log("[ShadowLink] VT API response:", data);
+    /*
+      Safe JSON parsing
+    */
 
-    // Defensive: extract stats safely
-    let stats = null;
+    let data = null;
+
     try {
-      if (data?.vt?.data?.attributes?.last_analysis_stats) {
-        stats = data.vt.data.attributes.last_analysis_stats;
-      } else if (data?.vt?.data?.attributes?.stats) {
-        stats = data.vt.data.attributes.stats;
-      }
-    } catch {
-      stats = null;
+
+      data =
+        await response.json();
+
+    } catch (jsonError) {
+
+      console.warn(
+
+        "[ShadowLink] Invalid JSON response:",
+
+        jsonError
+      );
+
+      return null;
     }
 
-    // Defensive: extract domain age
+    console.log(
+      "[ShadowLink] VT API response:",
+      data
+    );
+
+    /*
+      =========================
+      Extract VirusTotal stats
+      =========================
+    */
+
+    let stats = {
+
+      harmless: 0,
+      malicious: 0,
+      suspicious: 0,
+      undetected: 0
+    };
+
+    try {
+
+      const vtStats =
+
+        data?.vt?.data?.attributes?.last_analysis_stats
+
+        ||
+
+        data?.vt?.data?.attributes?.stats
+
+        ||
+
+        null;
+
+      if (vtStats) {
+
+        stats = {
+
+          harmless:
+            vtStats.harmless || 0,
+
+          malicious:
+            vtStats.malicious || 0,
+
+          suspicious:
+            vtStats.suspicious || 0,
+
+          undetected:
+            vtStats.undetected || 0
+        };
+      }
+
+    } catch (statsError) {
+
+      console.warn(
+
+        "[ShadowLink] Failed parsing VT stats:",
+
+        statsError
+      );
+    }
+
+    /*
+      =========================
+      Extract Domain Age
+      =========================
+    */
+
     let domainAgeDays = null;
-    if (typeof data?.domainAgeDays === "number") {
-      domainAgeDays = data.domainAgeDays;
-    } else if (typeof data?.domain_age_days === "number") {
-      domainAgeDays = data.domain_age_days;
-    } else if (data?.whois?.creation_date) {
-      try {
-        const created = new Date(data.whois.creation_date);
-        const now = new Date();
-        domainAgeDays = Math.floor((now - created) / (1000 * 60 * 60 * 24));
-      } catch {
-        domainAgeDays = null;
+
+    try {
+
+      /*
+        Direct API value
+      */
+
+      if (
+
+        typeof data?.domainAgeDays === "number"
+
+      ) {
+
+        domainAgeDays =
+          data.domainAgeDays;
       }
+
+      else if (
+
+        typeof data?.domain_age_days === "number"
+
+      ) {
+
+        domainAgeDays =
+          data.domain_age_days;
+      }
+
+      /*
+        WHOIS fallback
+      */
+
+      else if (
+
+        data?.whois?.creation_date
+
+      ) {
+
+        const created =
+          new Date(
+            data.whois.creation_date
+          );
+
+        if (
+
+          !isNaN(created.getTime())
+
+        ) {
+
+          const now =
+            new Date();
+
+          domainAgeDays =
+            Math.floor(
+
+              (now - created)
+
+              /
+
+              (1000 * 60 * 60 * 24)
+            );
+        }
+      }
+
+    } catch (ageError) {
+
+      console.warn(
+
+        "[ShadowLink] Failed parsing domain age:",
+
+        ageError
+      );
     }
 
-    return { stats, domainAgeDays };
+    /*
+      Final response
+    */
+
+    return {
+
+      stats,
+      domainAgeDays
+    };
+
   } catch (error) {
-    console.warn("[ShadowLink] VirusTotal check failed:", error);
+
+    /*
+      Abort timeout
+    */
+
+    if (
+
+      error.name ===
+      "AbortError"
+
+    ) {
+
+      console.warn(
+        "[ShadowLink] VT request timeout"
+      );
+    }
+
+    else {
+
+      console.warn(
+
+        "[ShadowLink] VirusTotal check failed:",
+
+        error
+      );
+    }
+
     return null;
   }
 }
