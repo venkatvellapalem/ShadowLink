@@ -48,9 +48,9 @@
             <div class="site-url truncate" id="site">Scanning...</div>
 
             <div class="site-meta">
-                <span class="meta-item" id="domainAge">— Domain Age</span>
-                <span class="meta-divider">·</span>
-                <span class="meta-item" id="protocol">HTTPS</span>
+                <!--<span class="meta-item" id="domainAge"></span>-->
+                <!--<span class="meta-divider"></span>-->
+                <span class="meta-item protocol-secure" id="protocol"></span>
             </div>
         </section>
 
@@ -93,8 +93,15 @@
         <!-- =====================================================================
        VIRUSTOTAL STATS ROW
        ===================================================================== -->
-        <section class="vt-row card" id="vtRow">
-            <div class="vt-stat" id="vtClean">
+       <section class="vt-row card" id="vtRow">
+
+    <div class="card-label vt-title">
+        VirusTotal Metrics
+    </div>
+
+    <div class="vt-grid">
+
+        <div class="vt-stat" id="vtClean">
                 <div class="vt-num" id="vtCleanNum">—</div>
                 <div class="vt-lbl">Clean</div>
             </div>
@@ -113,11 +120,14 @@
                 <div class="vt-num" id="vtUndetectedNum">—</div>
                 <div class="vt-lbl">Undetected</div>
             </div>
+            </div>
+        </section>
         </section>
 
         <!-- =====================================================================
        ACTIVE MODULES CHIPS
        ===================================================================== -->
+       <!--
         <section class="modules-row" aria-label="Active detection modules">
             <div class="module-chip active" title="URL Structure Analysis">
                 URL
@@ -134,6 +144,7 @@
             <div class="module-chip active" title="URL Entropy">ENTROPY</div>
             <div class="module-chip active" title="JS Behavior">JS</div>
         </section>
+    -->
 
         <!-- =====================================================================
        THREAT BREAKDOWN CARD

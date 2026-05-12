@@ -17,6 +17,50 @@
           saveTimelineEvent */
 
 "use strict";
+/*
+|--------------------------------------------------------------------------
+| REAL TARGET URL
+|--------------------------------------------------------------------------
+*/
+
+let actualUrl = window.location.href;
+
+try {
+
+    /*
+    |--------------------------------------------------------------------------
+    | If current page is extension warning page,
+    | extract original dangerous URL
+    |--------------------------------------------------------------------------
+    */
+
+    if (
+        window.location.protocol ===
+        "chrome-extension:"
+    ) {
+
+        const params =
+            new URLSearchParams(
+                window.location.search
+            );
+
+        const originalUrl =
+            params.get("url");
+
+        if (originalUrl) {
+
+            actualUrl = originalUrl;
+        }
+    }
+
+}
+catch (err) {
+
+    console.warn(
+        "[ShadowLink] URL extraction failed:",
+        err
+    );
+}
 
 // =============================================================================
 // MESSAGE LISTENER — must be registered synchronously at the top level.
@@ -44,6 +88,28 @@ chrome.runtime.onMessage.addListener((message) => {
     // -------------------------------------------------------------------------
     // 1. Initialise the threat accumulator engine
     // -------------------------------------------------------------------------
+    /*
+  Temporary bypass
+*/
+
+const bypass =
+
+  sessionStorage.getItem(
+    "shadowlink_bypass"
+  );
+
+if (bypass === "true") {
+
+  console.log(
+    "[ShadowLink] Protection bypassed once"
+  );
+
+  sessionStorage.removeItem(
+    "shadowlink_bypass"
+  );
+
+  return;
+}
     const engine = createThreatEngine();
 
     // Signal scanning started — set icon to orange immediately (scanning state)
@@ -55,26 +121,77 @@ chrome.runtime.onMessage.addListener((message) => {
     //    into the engine with context-aware point values so the engine's
     //    breakdown is always populated correctly.
     // -------------------------------------------------------------------------
-    const urlResult = analyzeURL(window.location.href);
+const urlResult = analyzeURL(actualUrl);
+    urlResult.indicators.forEach(indicator => {
 
-    urlResult.indicators.forEach((indicator) => {
-      const lower = indicator.toLowerCase();
-      let points;
+  /*
+    Homoglyph
+  */
 
-      // Map each indicator to its correct point value from urlAnalyzer.js
-      if (lower.includes("homoglyph")) points = 60;
-      else if (lower.includes("punycode") || lower.includes("idn")) points = 25;
-      else if (lower.includes("ip address")) points = 30;
-      else if (lower.includes("unencrypted") || lower.includes("http")) points = 15;
-      else if (lower.includes("subdomain depth")) points = 15;
-      else if (lower.includes("keyword")) points = 10;
-      else if (lower.includes("long url")) points = 10;
-      else if (lower.includes("open-redirect")) points = 10;
-      else if (lower.includes("top-level domain") || lower.includes("tld")) points = 20;
-      else points = 10; // Conservative default
+  if (
+    indicator.includes("homoglyph")
+  ) {
 
-      engine.addThreat(points, indicator);
-    });
+    engine.addThreat(
+      65,
+      indicator
+    );
+  }
+
+  /*
+    Suspicious TLD
+  */
+
+  else if (
+    indicator.includes("TLD")
+  ) {
+
+    engine.addThreat(
+      30,
+      indicator
+    );
+  }
+
+  /*
+    HTTP
+  */
+
+  else if (
+  indicator.toLowerCase().includes("http")
+) {
+
+    engine.addThreat(
+      15,
+      indicator
+    );
+  }
+
+  /*
+    Suspicious keywords
+  */
+
+  else if (
+    indicator.includes("keyword")
+  ) {
+
+    engine.addThreat(
+      20,
+      indicator
+    );
+  }
+
+  /*
+    Default
+  */
+
+  else {
+
+    engine.addThreat(
+      10,
+      indicator
+    );
+  }
+});
 
     // -------------------------------------------------------------------------
     // 3. Login form detection
@@ -87,7 +204,7 @@ chrome.runtime.onMessage.addListener((message) => {
     // 3b. URL Entropy analysis
     // -------------------------------------------------------------------------
     if (typeof analyzeURLEntropy === "function") {
-      const entropyResult = analyzeURLEntropy(window.location.href);
+      const entropyResult = analyzeURLEntropy(actualUrl);
       entropyResult.indicators.forEach((ind) =>
         engine.addThreat(
           entropyResult.score > 0
@@ -105,7 +222,7 @@ chrome.runtime.onMessage.addListener((message) => {
     // 3c. URL Shortener check
     // -------------------------------------------------------------------------
     if (typeof checkURLShortener === "function") {
-      const shortResult = checkURLShortener(window.location.href);
+      const shortResult = checkURLShortener(actualUrl);
       shortResult.indicators.forEach((ind) => engine.addThreat(10, ind));
     }
 
@@ -157,7 +274,7 @@ chrome.runtime.onMessage.addListener((message) => {
     //    checkSuspiciousTLD() may overlap with urlAnalyzer — skip if the engine
     //    already has a TLD-related indicator to avoid double-counting.
     // -------------------------------------------------------------------------
-    const tldIndicators = checkSuspiciousTLD(window.location.href);
+    const tldIndicators = checkSuspiciousTLD(actualUrl);
     tldIndicators.forEach((ind) => {
       const alreadyFlagged = engine.indicators.some(
         (i) =>
@@ -175,7 +292,7 @@ chrome.runtime.onMessage.addListener((message) => {
     let domainAgeDays = null;
 
     try {
-      const vtResult = await checkVirusTotal(window.location.href);
+      const vtResult = await checkVirusTotal(actualUrl);
       if (vtResult) {
         vtStats = vtResult.stats;
         domainAgeDays = vtResult.domainAgeDays;
@@ -244,21 +361,139 @@ chrome.runtime.onMessage.addListener((message) => {
       threatLevel: classifyThreat(engine.score),
       vtStats,
       domainAgeDays,
-      url: window.location.href,
-      protocol: window.location.protocol, // 'https:' or 'http:'
+      url: actualUrl,
+      protocol: new URL(actualUrl).protocol, // 'https:' or 'http:'
       timestamp: new Date().toLocaleString(),
     };
 
     // Expose globally — popup reads this via chrome.scripting.executeScript
     window.shadowLinkData = finalResult;
+    /*
+|--------------------------------------------------------------------------
+| Dynamic Extension Icon
+|--------------------------------------------------------------------------
+*/
+
+try {
+
+    let iconPath = {
+        16: "assets/icons/icon16.png",
+        32: "assets/icons/icon32.png",
+        48: "assets/icons/icon48.png",
+        128: "assets/icons/icon128.png"
+    };
+
+    const level =
+        finalResult.threatLevel?.toLowerCase();
+
+    /*
+    |--------------------------------------------------------------------------
+    | SAFE → GREEN
+    |--------------------------------------------------------------------------
+    */
+
+    if (level === "safe") {
+
+        iconPath = {
+            16: chrome.runtime.getURL("assets/icons/green16.png"),
+    32: chrome.runtime.getURL("assets/icons/green32.png"),
+    48: chrome.runtime.getURL("assets/icons/green48.png"),
+    128: chrome.runtime.getURL("assets/icons/green128.png")
+        };
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | SUSPICIOUS / CRITICAL → ORANGE
+    |--------------------------------------------------------------------------
+    */
+
+    /*
+|--------------------------------------------------------------------------
+| SUSPICIOUS → YELLOW
+|--------------------------------------------------------------------------
+*/
+
+else if (
+    level === "suspicious"
+) {
+
+    iconPath = {
+        16: chrome.runtime.getURL("assets/icons/yellow16.png"),
+        32: chrome.runtime.getURL("assets/icons/yellow32.png"),
+        48: chrome.runtime.getURL("assets/icons/yellow48.png"),
+        128: chrome.runtime.getURL("assets/icons/yellow128.png")
+    };
+}
+
+/*
+|--------------------------------------------------------------------------
+| CRITICAL → ORANGE
+|--------------------------------------------------------------------------
+*/
+
+else if (
+    level === "critical"
+) {
+
+    iconPath = {
+        16: chrome.runtime.getURL("assets/icons/orange16.png"),
+        32: chrome.runtime.getURL("assets/icons/orange32.png"),
+        48: chrome.runtime.getURL("assets/icons/orange48.png"),
+        128: chrome.runtime.getURL("assets/icons/orange128.png")
+    };
+}
+
+    /*
+    |--------------------------------------------------------------------------
+    | DANGEROUS → RED
+    |--------------------------------------------------------------------------
+    */
+
+    else if (
+        level === "dangerous"
+    ) {
+
+        iconPath = {
+    16: chrome.runtime.getURL("assets/icons/red16.png"),
+    32: chrome.runtime.getURL("assets/icons/red32.png"),
+    48: chrome.runtime.getURL("assets/icons/red48.png"),
+    128: chrome.runtime.getURL("assets/icons/red128.png")
+};
+    }
+
+    chrome.runtime.sendMessage({
+        type: "SET_EXTENSION_ICON",
+        iconPath
+    });
+
+}
+catch (err) {
+
+    console.warn(
+        "Dynamic icon update failed:",
+        err
+    );
+}
 
     // -------------------------------------------------------------------------
     // 6b. Save to SOC threat timeline
     // -------------------------------------------------------------------------
     if (
-      finalResult.threatLevel !== "Safe" &&
-      typeof saveTimelineEvent === "function"
-    ) {
+
+  (
+    finalResult.threatLevel === "Suspicious"
+
+  )
+
+  &&
+
+  typeof showThreatPopup === "function"
+
+) {
+
+  showThreatPopup(finalResult);
+} {
       saveTimelineEvent(finalResult);
     }
 
@@ -277,11 +512,7 @@ chrome.runtime.onMessage.addListener((message) => {
     // -------------------------------------------------------------------------
     // 8. Update extension action icon to reflect final threat level
     // -------------------------------------------------------------------------
-    chrome.runtime.sendMessage({
-      type: "UPDATE_ICON",
-      level: finalResult.threatLevel,
-    });
-
+    
     // -------------------------------------------------------------------------
     // 9. Persist to threat history for non-safe results
     // -------------------------------------------------------------------------
@@ -298,7 +529,7 @@ chrome.runtime.onMessage.addListener((message) => {
     if (finalResult.score >= 50) {
       chrome.runtime.sendMessage({
         type: "CAPTURE_THREAT",
-        url: window.location.href,
+        url: actualUrl,
       });
     }
   } catch (err) {

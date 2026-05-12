@@ -354,14 +354,17 @@ body {
    ========================================================================== */
 
 .vt-row {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    margin: 8px 18px 0;
+    display: flex;
+    flex-direction: column;
+
+    margin: 8px 18px 10px;
+
+    padding: 14px 0 0;
+
     border-radius: 14px;
     background: #111111;
     border: 1px solid rgba(255, 255, 255, 0.07);
     overflow: hidden;
-    transition: border-color var(--dur-fast) ease;
 }
 
 .vt-stat {
@@ -425,7 +428,7 @@ body {
 /* ==========================================================================
    9. MODULES ROW — detection chip pills
    ========================================================================== */
-
+/*
 .modules-row {
     display: flex;
     flex-wrap: wrap;
@@ -449,7 +452,7 @@ body {
         border-color var(--dur-fast) ease,
         background var(--dur-fast) ease;
 }
-
+*/
 .module-chip.active {
     color: var(--cyan);
     border-color: rgba(0, 229, 191, 0.25);
@@ -1213,4 +1216,70 @@ button:focus-visible {
 
 .site-card {
     border-radius: 14px;
+}
+
+.section-label {
+    margin: 10px 18px 8px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #7a7f8d;
+}
+
+.protocol-secure::after {
+    content: "";
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-left: 5px;
+    vertical-align: middle;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+/* LOCKED HTTPS */
+.protocol-secure.https::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2300ff88' viewBox='0 0 24 24'%3E%3Cpath d='M17 8h-1V6a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2zm-6 8.73V17a1 1 0 1 1 2 0v-.27a2 2 0 1 1-2 0zM10 8V6a2 2 0 1 1 4 0v2h-4z'/%3E%3C/svg%3E");
+}
+
+/* UNLOCKED HTTP */
+.protocol-secure.http::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23ff9900' viewBox='0 0 24 24'%3E%3Cpath d='M17 8h-6V6a4 4 0 1 1 8 0h-2a2 2 0 1 0-4 0v2h4a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h10z'/%3E%3C/svg%3E");
+}
+
+.vt-row {
+    display: flex;
+    flex-direction: column;
+    padding: 14px 0 0;
+}
+
+.vt-title {
+    padding: 0 16px 10px;
+}
+.vt-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+}
+.timeline-dot.safe,
+.timeline-badge.safe {
+    background: #00F5D4;
+    color: #00F5D4;
+}
+
+.timeline-dot.suspicious,
+.timeline-badge.suspicious {
+    background: #FACC15;
+    color: #FACC15;
+}
+
+.timeline-dot.critical,
+.timeline-badge.critical {
+    background: #F97316;
+    color: #F97316;
+}
+
+.timeline-dot.dangerous,
+.timeline-badge.dangerous {
+    background: #EF4444;
+    color: #EF4444;
 }

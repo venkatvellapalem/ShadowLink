@@ -25,8 +25,15 @@
  *   < 30   Safe       — No significant indicators
  */
 function classifyThreat(score) {
-  if (score >= 100) return "Dangerous";
-  if (score >= 60) return "Suspicious";
-  if (score >= 30) return "Warning";
+
+  if (score >= 75)
+    return "Dangerous";
+
+  if (score >= 50)
+    return "Critical";
+
+  if (score >= 25)
+    return "Suspicious";
+
   return "Safe";
 }
