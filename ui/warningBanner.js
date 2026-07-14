@@ -22,8 +22,12 @@ function showWarningBanner(result) {
       glow: "rgba(245,158,11,0.25)",
     },
     Suspicious: {
+      color: "#FACC15",
+      glow: "rgba(250,204,21,0.3)",
+    },
+    Critical: {
       color: "#F97316",
-      glow: "rgba(249,115,22,0.3)",
+      glow: "rgba(249,115,22,0.35)",
     },
     Dangerous: {
       color: "#EF4444",

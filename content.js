@@ -11,10 +11,10 @@
    ============================================================================= */
 
 /* global createThreatEngine, analyzeURL, detectLoginForms, checkSuspiciousTLD,
-          checkVirusTotal, classifyThreat, showThreatPopup, saveThreat,
-          analyzeURLEntropy, checkURLShortener, detectCredentialThreats,
-          analyzeJSBehavior, analyzeTyposquatting, analyzeRedirectChain,
-          saveTimelineEvent */
+           checkVirusTotal, classifyThreat, showThreatPopup, showWarningBanner,
+           showDangerOverlay, saveThreat, analyzeURLEntropy, checkURLShortener,
+           detectCredentialThreats, analyzeJSBehavior, analyzeTyposquatting,
+           analyzeRedirectChain, saveTimelineEvent */
 
 "use strict";
 /*
@@ -270,6 +270,20 @@ const urlResult = analyzeURL(actualUrl);
     }
 
     // -------------------------------------------------------------------------
+    // 3g. Typosquatting classification
+    // -------------------------------------------------------------------------
+    if (typeof analyzeTyposquatting === "function") {
+      const typosquatResult = analyzeTyposquatting(actualUrl);
+      typosquatResult.indicators.forEach((ind) => {
+        const pts =
+          typosquatResult.indicators.length > 0
+            ? Math.round(typosquatResult.score / typosquatResult.indicators.length)
+            : 10;
+        engine.addThreat(pts, ind);
+      });
+    }
+
+    // -------------------------------------------------------------------------
     // 4. Suspicious TLD check (deduplication)
     //    checkSuspiciousTLD() may overlap with urlAnalyzer — skip if the engine
     //    already has a TLD-related indicator to avoid double-counting.
@@ -285,8 +299,25 @@ const urlResult = analyzeURL(actualUrl);
     });
 
     // -------------------------------------------------------------------------
-    // 5. VirusTotal + Domain Age (async, network call)
-    //    Wrapped in its own try/catch so a VT failure never aborts analysis.
+    // Phase 1: Synchronous analysis complete — set preliminary result so the
+    // popup can read window.shadowLinkData immediately (even before VT).
+    // -------------------------------------------------------------------------
+    const preliminaryResult = {
+      score: engine.score,
+      indicators: engine.indicators,
+      breakdown: engine.breakdown,
+      threatLevel: classifyThreat(engine.score),
+      vtStats: null,
+      domainAgeDays: null,
+      vtPending: true,
+      url: actualUrl,
+      protocol: new URL(actualUrl).protocol,
+      timestamp: new Date().toLocaleString(),
+    };
+    window.shadowLinkData = preliminaryResult;
+
+    // -------------------------------------------------------------------------
+    // Phase 2: VirusTotal + Domain Age (async, network call)
     // -------------------------------------------------------------------------
     let vtStats = null;
     let domainAgeDays = null;
@@ -301,36 +332,22 @@ const urlResult = analyzeURL(actualUrl);
       console.warn("[ShadowLink] VirusTotal check failed:", vtErr);
     }
 
-    // Domain age scoring
     if (domainAgeDays !== null && domainAgeDays !== undefined) {
       if (domainAgeDays < 30) {
-        engine.addThreat(
-          70,
-          `Very new domain: registered ${domainAgeDays} days ago`,
-        );
+        engine.addThreat(70, `Very new domain: registered ${domainAgeDays} days ago`);
       } else if (domainAgeDays < 90) {
-        engine.addThreat(
-          40,
-          `Recently registered domain: ${domainAgeDays} days ago`,
-        );
+        engine.addThreat(40, `Recently registered domain: ${domainAgeDays} days ago`);
       }
     }
 
-    // VirusTotal malicious / suspicious scoring
     if (vtStats) {
       const malicious = vtStats.malicious || 0;
       const suspicious = vtStats.suspicious || 0;
 
       if (malicious >= 10) {
-        engine.addThreat(
-          70,
-          `VirusTotal: flagged malicious by ${malicious} vendors`,
-        );
+        engine.addThreat(70, `VirusTotal: flagged malicious by ${malicious} vendors`);
       } else if (malicious >= 5) {
-        engine.addThreat(
-          35,
-          `VirusTotal: flagged malicious by ${malicious} vendors`,
-        );
+        engine.addThreat(35, `VirusTotal: flagged malicious by ${malicious} vendors`);
       } else if (malicious >= 2) {
         engine.addThreat(20, `VirusTotal: flagged by ${malicious} vendor(s)`);
       } else if (malicious === 1) {
@@ -338,21 +355,14 @@ const urlResult = analyzeURL(actualUrl);
       }
 
       if (suspicious >= 3) {
-        engine.addThreat(
-          15,
-          `VirusTotal: flagged suspicious by ${suspicious} vendors`,
-        );
+        engine.addThreat(15, `VirusTotal: flagged suspicious by ${suspicious} vendors`);
       } else if (suspicious > 0) {
-        engine.addThreat(
-          5,
-          `VirusTotal: ${suspicious} vendor(s) flagged suspicious`,
-        );
+        engine.addThreat(5, `VirusTotal: ${suspicious} vendor(s) flagged suspicious`);
       }
     }
 
     // -------------------------------------------------------------------------
-    // 6. Build the final result object
-    //    This is stored on window so popup.js can read it via executeScript.
+    // 6. Build final result with VT data
     // -------------------------------------------------------------------------
     const finalResult = {
       score: engine.score,
@@ -361,177 +371,97 @@ const urlResult = analyzeURL(actualUrl);
       threatLevel: classifyThreat(engine.score),
       vtStats,
       domainAgeDays,
+      vtPending: false,
       url: actualUrl,
-      protocol: new URL(actualUrl).protocol, // 'https:' or 'http:'
+      protocol: new URL(actualUrl).protocol,
       timestamp: new Date().toLocaleString(),
     };
 
-    // Expose globally — popup reads this via chrome.scripting.executeScript
     window.shadowLinkData = finalResult;
-    /*
-|--------------------------------------------------------------------------
-| Dynamic Extension Icon
-|--------------------------------------------------------------------------
-*/
 
-try {
-
-    let iconPath = {
+    // -------------------------------------------------------------------------
+    // 7. Dynamic Extension Icon
+    // -------------------------------------------------------------------------
+    try {
+      let iconPath = {
         16: "assets/icons/icon16.png",
         32: "assets/icons/icon32.png",
         48: "assets/icons/icon48.png",
         128: "assets/icons/icon128.png"
-    };
+      };
 
-    const level =
-        finalResult.threatLevel?.toLowerCase();
+      const level = finalResult.threatLevel?.toLowerCase();
 
-    /*
-    |--------------------------------------------------------------------------
-    | SAFE → GREEN
-    |--------------------------------------------------------------------------
-    */
-
-    if (level === "safe") {
-
+      if (level === "safe") {
         iconPath = {
-            16: chrome.runtime.getURL("assets/icons/green16.png"),
-    32: chrome.runtime.getURL("assets/icons/green32.png"),
-    48: chrome.runtime.getURL("assets/icons/green48.png"),
-    128: chrome.runtime.getURL("assets/icons/green128.png")
+          16: chrome.runtime.getURL("assets/icons/green16.png"),
+          32: chrome.runtime.getURL("assets/icons/green32.png"),
+          48: chrome.runtime.getURL("assets/icons/green48.png"),
+          128: chrome.runtime.getURL("assets/icons/green128.png")
         };
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | SUSPICIOUS / CRITICAL → ORANGE
-    |--------------------------------------------------------------------------
-    */
-
-    /*
-|--------------------------------------------------------------------------
-| SUSPICIOUS → YELLOW
-|--------------------------------------------------------------------------
-*/
-
-else if (
-    level === "suspicious"
-) {
-
-    iconPath = {
-        16: chrome.runtime.getURL("assets/icons/yellow16.png"),
-        32: chrome.runtime.getURL("assets/icons/yellow32.png"),
-        48: chrome.runtime.getURL("assets/icons/yellow48.png"),
-        128: chrome.runtime.getURL("assets/icons/yellow128.png")
-    };
-}
-
-/*
-|--------------------------------------------------------------------------
-| CRITICAL → ORANGE
-|--------------------------------------------------------------------------
-*/
-
-else if (
-    level === "critical"
-) {
-
-    iconPath = {
-        16: chrome.runtime.getURL("assets/icons/orange16.png"),
-        32: chrome.runtime.getURL("assets/icons/orange32.png"),
-        48: chrome.runtime.getURL("assets/icons/orange48.png"),
-        128: chrome.runtime.getURL("assets/icons/orange128.png")
-    };
-}
-
-    /*
-    |--------------------------------------------------------------------------
-    | DANGEROUS → RED
-    |--------------------------------------------------------------------------
-    */
-
-    else if (
-        level === "dangerous"
-    ) {
-
+      } else if (level === "suspicious") {
         iconPath = {
-    16: chrome.runtime.getURL("assets/icons/red16.png"),
-    32: chrome.runtime.getURL("assets/icons/red32.png"),
-    48: chrome.runtime.getURL("assets/icons/red48.png"),
-    128: chrome.runtime.getURL("assets/icons/red128.png")
-};
+          16: chrome.runtime.getURL("assets/icons/yellow16.png"),
+          32: chrome.runtime.getURL("assets/icons/yellow32.png"),
+          48: chrome.runtime.getURL("assets/icons/yellow48.png"),
+          128: chrome.runtime.getURL("assets/icons/yellow128.png")
+        };
+      } else if (level === "critical") {
+        iconPath = {
+          16: chrome.runtime.getURL("assets/icons/orange16.png"),
+          32: chrome.runtime.getURL("assets/icons/orange32.png"),
+          48: chrome.runtime.getURL("assets/icons/orange48.png"),
+          128: chrome.runtime.getURL("assets/icons/orange128.png")
+        };
+      } else if (level === "dangerous") {
+        iconPath = {
+          16: chrome.runtime.getURL("assets/icons/red16.png"),
+          32: chrome.runtime.getURL("assets/icons/red32.png"),
+          48: chrome.runtime.getURL("assets/icons/red48.png"),
+          128: chrome.runtime.getURL("assets/icons/red128.png")
+        };
+      }
+
+      chrome.runtime.sendMessage({ type: "SET_EXTENSION_ICON", iconPath });
+    } catch (err) {
+      console.warn("Dynamic icon update failed:", err);
     }
 
-    chrome.runtime.sendMessage({
-        type: "SET_EXTENSION_ICON",
-        iconPath
-    });
+    // -------------------------------------------------------------------------
+    // 8. Show floating threat card and warning banner for non-Safe results
+    // -------------------------------------------------------------------------
+    if (finalResult.threatLevel !== "Safe") {
+      if (typeof showThreatPopup === "function") showThreatPopup(finalResult);
+      if (typeof showWarningBanner === "function") showWarningBanner(finalResult);
+    }
 
-}
-catch (err) {
-
-    console.warn(
-        "Dynamic icon update failed:",
-        err
-    );
-}
+    // Show full-page overlay for dangerous scores (≥ 100: multiple high-confidence signals)
+    if (finalResult.score >= 100 && typeof showDangerOverlay === "function") {
+      showDangerOverlay(finalResult);
+    }
 
     // -------------------------------------------------------------------------
-    // 6b. Save to SOC threat timeline
+    // 9. Save to SOC threat timeline
     // -------------------------------------------------------------------------
-    if (
-
-  (
-    finalResult.threatLevel === "Suspicious"
-
-  )
-
-  &&
-
-  typeof showThreatPopup === "function"
-
-) {
-
-  showThreatPopup(finalResult);
-} {
+    if (typeof saveTimelineEvent === "function") {
       saveTimelineEvent(finalResult);
     }
 
-    console.log("[ShadowLink] Analysis complete:", finalResult);
-
     // -------------------------------------------------------------------------
-    // 7. Show floating threat card for Suspicious / Dangerous / Warning levels
+    // 10. Persist to threat history for non-safe results
     // -------------------------------------------------------------------------
-    if (
-      finalResult.threatLevel !== "Safe" &&
-      typeof showThreatPopup === "function"
-    ) {
-      showThreatPopup(finalResult);
-    }
-
-    // -------------------------------------------------------------------------
-    // 8. Update extension action icon to reflect final threat level
-    // -------------------------------------------------------------------------
-    
-    // -------------------------------------------------------------------------
-    // 9. Persist to threat history for non-safe results
-    // -------------------------------------------------------------------------
-    if (
-      finalResult.threatLevel !== "Safe" &&
-      typeof saveThreat === "function"
-    ) {
+    if (finalResult.threatLevel !== "Safe" && typeof saveThreat === "function") {
       saveThreat(finalResult);
     }
 
     // -------------------------------------------------------------------------
-    // 10. Request screenshot evidence capture for medium+ risk scores
+    // 11. Request screenshot evidence capture for medium+ risk scores
     // -------------------------------------------------------------------------
     if (finalResult.score >= 50) {
-      chrome.runtime.sendMessage({
-        type: "CAPTURE_THREAT",
-        url: actualUrl,
-      });
+      chrome.runtime.sendMessage({ type: "CAPTURE_THREAT", url: actualUrl });
     }
+
+    console.log("[ShadowLink] Analysis complete:", finalResult);
   } catch (err) {
     // Never let analysis errors surface to the user as uncaught exceptions
     console.error("[ShadowLink] Analysis error:", err);

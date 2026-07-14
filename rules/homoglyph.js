@@ -118,27 +118,6 @@ function detectHomoglyph(
       larger legit domain
     */
 
-    const phishingSeparators = [
-
-  "secure",
-  "login",
-  "auth",
-  "verify",
-  "account",
-  "update"
-];
-
-const containsTrusted =
-  normalizedDomain.includes(
-    normalizedTrusted
-  );
-
-const hasPhishingPattern =
-  phishingSeparators.some(
-    part =>
-      normalizedDomain.includes(part)
-  );
-
 /*
   Legit larger domains
   like googleapis

@@ -3,261 +3,80 @@
 // Service Worker: message handler + pre-navigation threat scanner
 // =============================================================================
 
+importScripts('rules/homoglyph.js', 'rules/constants.js');
+
 /* ==========================================================================
    MESSAGE HANDLER
    ========================================================================== */
 
-chrome.runtime.onMessage.addListener(
+chrome.runtime.onMessage.addListener((message, sender) => {
 
-  (message, sender) => {
+  if (message.type === "CAPTURE_THREAT") {
+    setTimeout(() => {
+      const tab = sender?.tab;
+      if (!tab?.id) return;
 
-    /*
-      Screenshot Capture
-    */
+      chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" }, screenshotUrl => {
+        if (chrome.runtime.lastError) return;
 
-    if (
-      message.type ===
-      "CAPTURE_THREAT"
-    ) {
+        chrome.storage.local.get(["shadowlinkScreenshots"], data => {
+          const screenshots = data.shadowlinkScreenshots || [];
 
-      setTimeout(() => {
-
-  chrome.tabs.captureVisibleTab(
-
-    null,
-
-    { format: "png" },
-
-    screenshotUrl => {
-
-      if (
-        chrome.runtime.lastError
-      ) {
-        return;
-      }
-
-      chrome.storage.local.get(
-
-        ["shadowlinkScreenshots"],
-
-        data => {
-
-          const screenshots =
-            data.shadowlinkScreenshots || [];
+          const now = Date.now();
+          const dup = screenshots.some(s =>
+            s.url === (message.url || sender?.tab?.url) &&
+            (now - new Date(s.timestampRaw || 0)) < 300000
+          );
+          if (dup) return;
 
           screenshots.unshift({
-
-  url:
-    message.url ||
-
-    sender?.tab?.url ||
-
-    "Unknown URL",
-
-  timestamp:
-    new Date()
-      .toLocaleString(),
-
-  screenshot:
-    screenshotUrl
-});
+            url: message.url || sender?.tab?.url || "",
+            timestamp: new Date().toLocaleString(),
+            timestampRaw: now,
+            screenshot: screenshotUrl
+          });
 
           chrome.storage.local.set({
-
-            shadowlinkScreenshots:
-              screenshots.slice(0, 20)
+            shadowlinkScreenshots: screenshots.slice(0, 10)
           });
-        }
-      );
+        });
+      });
+    }, 600);
+    return;
+  }
+
+  if (message.type === "UPDATE_ICON" && message.level === "Scanning") {
+    if (sender?.tab?.id) {
+      chrome.action.setIcon({ tabId: sender.tab.id, path: { 16: "assets/icons/icon16.png", 32: "assets/icons/icon32.png", 48: "assets/icons/icon48.png", 128: "assets/icons/icon128.png" } });
     }
-  );
-
-}, 300);
-}
-    /*
-      Dynamic Icon Update
-    */
-
-    if (
-  message.type ===
-  "SET_EXTENSION_ICON"
-) {
-
-  /*
-  |--------------------------------------------------------------------------
-  | Use tab-specific update when available
-  |--------------------------------------------------------------------------
-  */
-
-  if (
-    sender?.tab?.id
-  ) {
-
-    chrome.action.setIcon({
-
-      path: message.iconPath,
-
-      tabId: sender.tab.id
-    });
+    return;
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | Fallback for warning pages
-  |--------------------------------------------------------------------------
-  */
-
-  else {
-
-    chrome.action.setIcon({
-
-      path: message.iconPath
-    });
-  }
-}
-  }
-);
-
-/* ==========================================================================
-   INLINE LEVENSHTEIN
-   ========================================================================== */
-
-function bgLevenshtein(a, b) {
-
-  const m = a.length;
-
-  const n = b.length;
-
-  const dp = Array.from(
-
-    { length: m + 1 },
-
-    (_, i) => {
-
-      const row =
-        new Array(n + 1);
-
-      row[0] = i;
-
-      return row;
+  if (message.type === "SET_EXTENSION_ICON") {
+    if (sender?.tab?.id) {
+      chrome.action.setIcon({ path: message.iconPath, tabId: sender.tab.id });
+    } else {
+      chrome.action.setIcon({ path: message.iconPath });
     }
-  );
-
-  for (
-    let j = 0;
-    j <= n;
-    j++
-  ) {
-
-    dp[0][j] = j;
+    return;
   }
-
-  for (
-    let i = 1;
-    i <= m;
-    i++
-  ) {
-
-    for (
-      let j = 1;
-      j <= n;
-      j++
-    ) {
-
-      dp[i][j] =
-
-        a[i - 1] ===
-        b[j - 1]
-
-          ?
-
-          dp[i - 1][j - 1]
-
-          :
-
-          1 + Math.min(
-
-            dp[i - 1][j - 1],
-
-            dp[i][j - 1],
-
-            dp[i - 1][j]
-          );
-    }
-  }
-
-  return dp[m][n];
-}
-
-/* ==========================================================================
-   NORMALIZATION
-   ========================================================================== */
-
-function bgNormalize(s) {
-
-  return s
-
-    .toLowerCase()
-
-    .replace(/0/g, "o")
-    .replace(/1/g, "l")
-    .replace(/3/g, "e")
-    .replace(/4/g, "a")
-    .replace(/5/g, "s")
-    .replace(/7/g, "t")
-
-    .replace(/\u0430/g, "a")
-    .replace(/\u0435/g, "e")
-    .replace(/\u043E/g, "o")
-
-    .replace(/rn/g, "m")
-
-    .replace(/(.)\1{2,}/g, "$1$1");
-}
+});
 
 /* ==========================================================================
    HELPERS
    ========================================================================== */
 
 function bgExtractLabel(hostname) {
-
-  return hostname
-
-    .replace(/^www\./, "")
-
-    .toLowerCase()
-
-    .split(".")[0];
+  return hostname.replace(/^www\./, "").toLowerCase().split(".")[0];
 }
 
-function bgIsBrandHost(
-  hostname,
-  brand
-) {
-
-  const h =
-    hostname.toLowerCase();
-
+function bgIsBrandHost(hostname, brand) {
+  const h = hostname.toLowerCase();
   return (
-
-    h === `${brand}.com`
-
-    ||
-
-    h === `www.${brand}.com`
-
-    ||
-
-    h.endsWith(
-      `.${brand}.com`
-    )
-
-    ||
-
-    h === `${brand}.net`
-
-    ||
-
+    h === `${brand}.com` ||
+    h === `www.${brand}.com` ||
+    h.endsWith(`.${brand}.com`) ||
+    h === `${brand}.net` ||
     h === `${brand}.org`
   );
 }
@@ -313,23 +132,7 @@ if (
       Ignore browser pages
     */
 
-    const skipPrefixes = [
-
-      "chrome://",
-      "chrome-extension://",
-      "edge://",
-      "about:",
-      "data:",
-      "moz-extension://"
-    ];
-
-    if (
-
-      skipPrefixes.some(
-        p => url.startsWith(p)
-      )
-
-    ) {
+    if (/^(chrome|chrome-extension|edge|about|data|moz-extension):\/\//.test(url)) {
       return;
     }
 
@@ -360,58 +163,9 @@ if (
       Threat lists
     */
 
-    const suspiciousKeywords = [
-
-      "login",
-      "verify",
-      "secure",
-      "security",
-      "account",
-      "update",
-      "banking",
-      "auth",
-      "signin",
-      "wallet",
-      "password",
-      "confirm",
-      "validate"
-    ];
-
-    const suspiciousTlds = [
-
-      ".xyz",
-      ".top",
-      ".click",
-      ".tk",
-      ".gq",
-      ".ml",
-      ".cf",
-      ".ga",
-      ".work",
-      ".support",
-      ".zip",
-      ".stream",
-      ".buzz",
-      ".loan",
-      ".trade"
-    ];
-
-    const targetedBrands = [
-
-      "google",
-      "paypal",
-      "microsoft",
-      "facebook",
-      "apple",
-      "amazon",
-      "instagram",
-      "netflix",
-      "twitter",
-      "linkedin",
-      "github",
-      "adobe",
-      "dropbox"
-    ];
+    const kwList = typeof suspiciousKeywords !== 'undefined' ? suspiciousKeywords : [];
+    const tldList = typeof suspiciousTLDs !== 'undefined' ? suspiciousTLDs : [];
+    const brandList = typeof trustedDomains !== 'undefined' ? trustedDomains : [];
 
     let score = 0;
 
@@ -436,7 +190,7 @@ if (
       Suspicious TLD
     */
 
-    for (const tld of suspiciousTlds) {
+    for (const tld of tldList) {
 
       if (
         hostname.endsWith(tld)
@@ -456,7 +210,7 @@ if (
       Suspicious keywords
     */
 
-    for (const kw of suspiciousKeywords) {
+    for (const kw of kwList) {
 
       if (
         hostname.includes(kw)
@@ -497,15 +251,15 @@ if (
       bgExtractLabel(hostname);
 
     const normLabel =
-      bgNormalize(label);
+      normalizeDomain(label);
 
     const normHostname =
-      bgNormalize(hostname);
+      normalizeDomain(hostname);
 
-    for (const brand of targetedBrands) {
+    for (const brand of brandList) {
 
       const normBrand =
-        bgNormalize(brand);
+        normalizeDomain(brand);
 
       /*
         Legit domain
@@ -551,7 +305,7 @@ if (
 
         const hasKeyword =
 
-          suspiciousKeywords.some(
+          kwList.some(
             kw =>
               hostname.includes(kw)
           );
@@ -574,7 +328,7 @@ if (
 
       const dist =
 
-        bgLevenshtein(
+        levenshtein(
           normLabel,
           normBrand
         );
@@ -744,58 +498,6 @@ timeline.unshift({
   }
 );
 
-/*
-  Capture screenshot evidence
-*/
-
-setTimeout(() => {
-
-  chrome.tabs.captureVisibleTab(
-
-    null,
-
-    { format: "png" },
-
-    screenshotUrl => {
-
-      if (
-        chrome.runtime.lastError
-      ) {
-        return;
-      }
-
-      chrome.storage.local.get(
-
-        ["shadowlinkScreenshots"],
-
-        data => {
-
-          const screenshots =
-            data.shadowlinkScreenshots || [];
-
-          screenshots.unshift({
-
-            url,
-
-            timestamp:
-              new Date()
-                .toLocaleString(),
-
-            screenshot:
-              screenshotUrl
-          });
-
-          chrome.storage.local.set({
-
-            shadowlinkScreenshots:
-              screenshots.slice(0, 20)
-          });
-        }
-      );
-    }
-  );
-
-}, 300);
       chrome.tabs.update(
 
         details.tabId,

@@ -18,11 +18,11 @@
  *   +10  Unusually long URL
  *   +10  Open-redirect parameter
  *
- * Threshold rationale:
- *   ≥ 100  Dangerous  — Multiple high-confidence signals. Near-certain threat.
- *   ≥ 60   Suspicious — Single strong signal (homoglyph, new domain, etc.)
- *   ≥ 30   Warning    — Some signals present, warrants attention
- *   < 30   Safe       — No significant indicators
+ * Threshold rationale (see classifyThreat below):
+ *   ≥ 75  Dangerous  — Multiple high-confidence signals
+ *   ≥ 50  Critical   — Strong signals present
+ *   ≥ 25  Suspicious — Some signals, warrants attention
+ *   < 25  Safe       — No significant indicators
  */
 function classifyThreat(score) {
 

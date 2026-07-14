@@ -22,6 +22,12 @@ const SEVERITY = {
     icon: "🔍",
     label: "SUSPICIOUS",
   },
+  Critical: {
+    color: "var(--suspicious)",
+    glow: "rgba(249,115,22,0.35)",
+    icon: "⚠️",
+    label: "CRITICAL",
+  },
   Dangerous: {
     color: "var(--dangerous)",
     glow: "rgba(255,59,59,0.4)",

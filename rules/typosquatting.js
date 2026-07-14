@@ -6,12 +6,11 @@
  * classification on top of the base levenshtein/homoglyph detection.
  *
  * Depends on (must load after):
- *   homoglyph.js  → TRUSTED_BRANDS, HOMOGLYPH_MAP, normalizeLabel,
- *                   levenshtein, extractDomainLabel, isBrandHostname,
- *                   detectHomoglyphAttack
+ *   constants.js → trustedDomains
+ *   homoglyph.js → levenshtein, normalizeDomain, detectHomoglyph
  */
 
-/* global TRUSTED_BRANDS, HOMOGLYPH_MAP, normalizeLabel, levenshtein, extractDomainLabel, isBrandHostname, detectHomoglyphAttack */
+/* global trustedDomains, levenshtein, normalizeDomain, detectHomoglyph */
 
 /**
  * classifyTyposquatAttack(label, brand)
@@ -21,6 +20,21 @@
  * @param {string} brand  — known brand name  (e.g. 'paypal')
  * @returns {string|null}  attack type key, or null if no clear attack
  */
+function normalizeLabel(s) {
+  return normalizeDomain(s);
+}
+
+function extractDomainLabel(hostname) {
+  return hostname.replace(/^www\./, "").toLowerCase().split(".")[0];
+}
+
+function isBrandHostname(hostname, brand) {
+  const h = hostname.toLowerCase();
+  return h === brand + ".com" || h === "www." + brand + ".com" ||
+    h.endsWith("." + brand + ".com") || h === brand + ".net" ||
+    h === brand + ".org";
+}
+
 function classifyTyposquatAttack(label, brand) {
   const nLabel = normalizeLabel(label);
   const nBrand = normalizeLabel(brand);
@@ -66,12 +80,8 @@ function classifyTyposquatAttack(label, brand) {
 function analyzeTyposquatting(url) {
   const result = { score: 0, indicators: [], matches: [] };
 
-  // Guard: only run when homoglyph.js has already been loaded
-  if (typeof detectHomoglyphAttack !== 'function') return result;
-  if (typeof normalizeLabel        !== 'function') return result;
-  if (typeof levenshtein           !== 'function') return result;
-  if (typeof extractDomainLabel    !== 'function') return result;
-  if (typeof isBrandHostname       !== 'function') return result;
+  if (typeof detectHomoglyph !== 'function') return result;
+  if (typeof levenshtein    !== 'function') return result;
 
   try {
     const parsed   = new URL(url);
@@ -80,7 +90,7 @@ function analyzeTyposquatting(url) {
 
     if (!label || label.length < 3) return result;
 
-    const brands = typeof TRUSTED_BRANDS !== 'undefined' ? TRUSTED_BRANDS : [];
+    const brands = typeof trustedDomains !== 'undefined' ? trustedDomains : [];
 
     for (const brand of brands) {
       // Skip if the hostname IS the legitimate brand (e.g. paypal.com itself)

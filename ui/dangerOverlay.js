@@ -1,8 +1,7 @@
-/*
 function showDangerOverlay(result) {
 
   if (
-  result.score < 50
+  result.score < 100
 ) {
     return;
   }
@@ -61,7 +60,6 @@ function showDangerOverlay(result) {
 
   overlay.style.position = "fixed";
   overlay.style.top = "0";
-  overlay.style.left = "0";
 
   overlay.style.width = "100vw";
   overlay.style.height = "100vh";
@@ -94,4 +92,3 @@ function showDangerOverlay(result) {
       overlay.remove();
     });
 }
-*/

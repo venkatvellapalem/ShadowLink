@@ -1,111 +1,46 @@
+/* global suspiciousTLDs, suspiciousKeywords, detectHomoglyph, trustedDomains */
+
 function analyzeURL(url) {
-
-
-  let indicators = [];
+  const indicators = [];
 
   let hostname = "";
-
   try {
-
-    hostname =
-      new URL(url)
-        .hostname
-        .toLowerCase()
-        .replace("www.", "");
-
+    hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
   } catch {
-
-    return {
-      indicators: []
-    };
+    return { indicators };
   }
 
-  /*
-    Suspicious TLD
-  */
-
-  suspiciousTLDs.forEach(tld => {
-
-    if (
-      hostname.endsWith(tld)
-    ) {
-
-
-      indicators.push(
-        `Suspicious TLD detected: ${tld}`
-      );
-    }
-  });
-
-  /*
-    HTTP detection
-  */
-
-  if (
-    url.startsWith("http://")
-  ) {
-
-
-    indicators.push(
-      "Website is not using HTTPS"
-    );
+  if (Array.isArray(suspiciousTLDs)) {
+    suspiciousTLDs.forEach(tld => {
+      if (hostname.endsWith(tld)) {
+        indicators.push("Suspicious TLD detected: " + tld);
+      }
+    });
   }
 
-  /*
-    Suspicious keywords
-    ONLY in hostname
-  */
+  if (url.startsWith("http://")) {
+    indicators.push("Website is not using HTTPS");
+  }
 
-  suspiciousKeywords.forEach(keyword => {
+  if (Array.isArray(suspiciousKeywords)) {
+    suspiciousKeywords.forEach(keyword => {
+      if (hostname.includes(keyword)) {
+        indicators.push("Suspicious keyword found: " + keyword);
+      }
+    });
+  }
 
-    if (
-      hostname.includes(keyword)
-    ) {
-
-
-      indicators.push(
-        `Suspicious keyword found: ${keyword}`
-      );
-    }
-  });
-
-  /*
-    Root domain extraction
-  */
-
-  const hostnameParts =
-  hostname.split(".");
-
-const rootDomain =
-  hostnameParts.length > 2
-
-    ? hostnameParts[
-        hostnameParts.length - 2
-      ]
-
+  const hostnameParts = hostname.split(".");
+  const rootDomain = hostnameParts.length > 2
+    ? hostnameParts[hostnameParts.length - 2]
     : hostnameParts[0];
 
-  /*
-    Homoglyph detection
-  */
-
-  const homoglyphMatches =
-    detectHomoglyph(
-      rootDomain,
-      trustedDomains
-    );
-
-  if (
-    homoglyphMatches.length > 0
-  ) {
-
-
-    indicators.push(
-      `Possible homoglyph attack targeting: ${homoglyphMatches.join(", ")}`
-    );
+  if (typeof detectHomoglyph === "function" && Array.isArray(trustedDomains)) {
+    const homoglyphMatches = detectHomoglyph(rootDomain, trustedDomains);
+    if (homoglyphMatches.length > 0) {
+      indicators.push("Possible homoglyph attack targeting: " + homoglyphMatches.join(", "));
+    }
   }
 
-  return {
-    indicators
-  };
+  return { indicators };
 }

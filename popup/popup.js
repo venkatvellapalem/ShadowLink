@@ -474,39 +474,27 @@ chrome.tabs.query(
             analyzedUrl
         );
 
+  function setProtocolBadge(isHttps) {
+    const el = document.getElementById("protocol");
+    if (!el) return;
+    el.textContent = isHttps ? "HTTPS" : "HTTP";
+    el.classList.remove("https", "http");
+    el.classList.add(isHttps ? "https" : "http");
+    el.style.color = isHttps ? "var(--cyan, #00E5BF)" : "var(--warning, #F5A623)";
+  }
+
   // --- Display the current site URL (truncated) ---
   const siteEl = document.getElementById("site");
   if (siteEl) {
     try {
       const parsed = new URL(analyzedUrl);
-      // Show hostname + up to 30 chars of path
       siteEl.textContent = parsed.hostname + parsed.pathname.substring(0, 30);
     } catch {
       siteEl.textContent = analyzedUrl.substring(0, 50);
     }
   }
 
-  // --- Protocol badge (HTTPS / HTTP) — hoisted so executeScript closure can refine it ---
-  const protoEl = document.getElementById("protocol");
-
-if (protoEl) {
-
-  const isHttps = analyzedUrl.startsWith("https");
-
-  protoEl.textContent = isHttps ? "HTTPS" : "HTTP";
-
-  protoEl.classList.remove("https", "http");
-
-  protoEl.classList.add(
-    isHttps ? "https" : "http"
-  );
-
-  protoEl.style.color = isHttps
-    ? "var(--cyan, #00E5BF)"
-    : "var(--warning, #F5A623)";
-
-  protoEl.dataset.fromTab = "1";
-}
+  setProtocolBadge(analyzedUrl.startsWith("https"));
 
   // --- Read analysis result stored on window by content.js ---
   chrome.scripting.executeScript(
@@ -522,164 +510,30 @@ if (protoEl) {
         chrome.runtime.lastError.message,
     );
 
-    /*
-    |--------------------------------------------------------------------------
-    | WARNING PAGE FALLBACK
-    |--------------------------------------------------------------------------
-    | executeScript fails on chrome-extension:// warning pages.
-    | So reconstruct threat data directly from warning URL params.
-    |--------------------------------------------------------------------------
-    */
-
-    if (
-        tab.url &&
-        tab.url.includes(
-            "/warning/warning.html"
-        )
-    ) {
-
-        let warningScore = 75;
-
-        if (warningBreakdown.length > 0) {
-
-            warningScore =
-                warningBreakdown.reduce(
-                    (sum, item) =>
-                        sum + item.points,
-                    0
-                );
-        }
-
-        warningScore =
-            Math.max(warningScore, 75);
-
-        let warningLevel =
-            "Dangerous";
-
-        if (warningScore >= 90) {
-            warningLevel = "Dangerous";
-        }
-        else if (warningScore >= 60) {
-            warningLevel = "Critical";
-        }
-        else if (warningScore >= 25) {
-            warningLevel = "Suspicious";
-        }
-        else {
-            warningLevel = "Safe";
-        }
-
-        applyThreatStyling(
-            warningLevel,
-            warningScore
-        );
-
-        renderBreakdown(
-            warningBreakdown
-        );
-
-        renderVTStats(
-            null,
-            null
-        );
-
-        return;
+    if (tab.url && tab.url.includes("/warning/warning.html")) {
+      applyThreatStyling("Dangerous", 75);
+      renderBreakdown(warningBreakdown.length ? warningBreakdown : [{ points: 75, reason: "Malicious page blocked by ShadowLink" }]);
+      renderVTStats(null, null);
+      return;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | NON-WARNING PAGE FALLBACK
-    |--------------------------------------------------------------------------
-    */
-
-    applyThreatStyling(
-        "Safe",
-        0
-    );
-
+    applyThreatStyling("Safe", 0);
     renderBreakdown([]);
-
     return;
-}
+  }
 
-      let data = results?.[0]?.result;
+  let data = results?.[0]?.result;
 
-/*
-|--------------------------------------------------------------------------
-| OVERRIDE CONTENT-SCRIPT RESULT
-| If we're on ShadowLink warning page,
-| popup must trust warning indicators instead.
-|--------------------------------------------------------------------------
-*/
-
-if (
-    tab.url &&
-    tab.url.includes(
-        "/warning/warning.html"
-    )
-) {
-    let warningScore = 75;
-
-/*
-|--------------------------------------------------------------------------
-| If indicators exist,
-| calculate dynamic score
-|--------------------------------------------------------------------------
-*/
-
-if (warningBreakdown.length > 0) {
-
-    warningScore =
-        warningBreakdown.reduce(
-            (sum, item) =>
-                sum + item.points,
-            0
-        );
-}
-
-/*
-|--------------------------------------------------------------------------
-| Force dangerous minimum
-| because warning page itself means blocked threat
-|--------------------------------------------------------------------------
-*/
-
-warningScore =
-    Math.max(warningScore, 75);
-
-let warningLevel =
-    "Dangerous";
-
-if (warningScore >= 90) {
-    warningLevel = "Dangerous";
-}
-else if (warningScore >= 60) {
-    warningLevel = "Critical";
-}
-else if (warningScore >= 25) {
-    warningLevel = "Suspicious";
-}
-else {
-    warningLevel = "Safe";
-}
-
+  if (tab.url && tab.url.includes("/warning/warning.html")) {
+    const ws = warningBreakdown.length > 0 ? Math.max(warningBreakdown.reduce((s, i) => s + i.points, 0), 75) : 75;
     data = {
-        score: warningScore,
-        threatLevel: warningLevel,
-        breakdown:
-    warningBreakdown.length > 0
-        ? warningBreakdown
-        : [
-            {
-                reason:
-                    "Malicious page blocked by ShadowLink",
-                points: warningScore
-            }
-        ],
-        vtStats: null,
-        domainAgeDays: null
+      score: ws,
+      threatLevel: ws >= 90 ? "Dangerous" : ws >= 60 ? "Critical" : ws >= 25 ? "Suspicious" : "Safe",
+      breakdown: warningBreakdown.length > 0 ? warningBreakdown : [{ points: ws, reason: "Malicious page blocked by ShadowLink" }],
+      vtStats: null,
+      domainAgeDays: null
     };
-}
+  }
 
       if (data) {
         let finalBreakdown =
@@ -703,6 +557,24 @@ renderVTStats(
     data.vtStats,
     data.domainAgeDays
 );
+
+if (data.vtPending) {
+  const pollTimer = setInterval(() => {
+    chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => window.shadowLinkData || null,
+    }, (pollResults) => {
+      const updated = pollResults?.[0]?.result;
+      if (updated && !updated.vtPending) {
+        applyThreatStyling(updated.threatLevel, updated.score);
+        renderBreakdown(updated.breakdown || []);
+        renderVTStats(updated.vtStats, updated.domainAgeDays);
+        clearInterval(pollTimer);
+      }
+    });
+  }, 500);
+  setTimeout(() => clearInterval(pollTimer), 15000);
+}
       } else {
         // Content script didn't run (DNS error, blocked page, etc.)
         // Run a lightweight URL-only analysis from the popup side
@@ -727,19 +599,6 @@ renderVTStats(
             "linkedin",
             "github",
           ];
-
-          function qLev(a, b) {
-            const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
-            for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-            for (let i = 1; i <= a.length; i++)
-              for (let j = 1; j <= b.length; j++)
-                dp[i][j] =
-                  a[i - 1] === b[j - 1]
-                    ? dp[i - 1][j - 1]
-                    : 1 +
-                      Math.min(dp[i - 1][j - 1], dp[i][j - 1], dp[i - 1][j]);
-            return dp[a.length][b.length];
-          }
 
           function qNorm(s) {
             return s
@@ -770,7 +629,7 @@ renderVTStats(
               hostname.endsWith("." + brand + ".com")
             )
               continue;
-            const dist = qLev(normLabel, normBrand);
+            const dist = levenshtein(normLabel, normBrand);
             const maxD = Math.min(Math.floor(normBrand.length * 0.25), 2);
             if (dist >= 1 && dist <= maxD) {
               fallbackScore += 60;
@@ -815,17 +674,7 @@ renderVTStats(
 
           // Update icon
           if (fallbackLevel !== "Safe") {
-            const iconMap = {
-
-  Safe: "green",
-
-  Suspicious: "yellow",
-
-  Critical: "orange",
-
-  Dangerous: "red"
-
-};
+            const iconMap = { Suspicious: "yellow", Warning: "orange", Dangerous: "red" };
             chrome.action.setIcon({
               path: { 128: `../assets/icons/${iconMap[fallbackLevel]}.png` },
               tabId: tab.id,
@@ -837,31 +686,9 @@ renderVTStats(
         }
       }
 
-      // Refine protocol display from content script's window.location.protocol
-      // (more accurate than analyzedUrl for pages with bad/self-signed certificates)
-      if (data?.protocol && protoEl) {
-
-  const isHttps =
-    data.protocol === "https:";
-
-  protoEl.textContent =
-    isHttps ? "HTTPS" : "HTTP";
-
-  protoEl.classList.remove(
-    "https",
-    "http"
-  );
-
-  protoEl.classList.add(
-    isHttps ? "https" : "http"
-  );
-
-  protoEl.style.color = isHttps
-    ? "var(--cyan, #00E5BF)"
-    : "var(--warning, #F5A623)";
-
-  delete protoEl.dataset.fromTab;
-}
+      if (data?.protocol) {
+        setProtocolBadge(data.protocol === "https:");
+      }
     },
   );
 });
@@ -886,14 +713,3 @@ if (clearBtn) {
   });
 }
 
-const protocolElement = document.getElementById("protocol");
-
-if (url.startsWith("https://")) {
-    protocolElement.textContent = "HTTPS";
-    protocolElement.classList.add("https");
-    protocolElement.classList.remove("http");
-} else {
-    protocolElement.textContent = "HTTP";
-    protocolElement.classList.add("http");
-    protocolElement.classList.remove("https");
-}
