@@ -29,12 +29,12 @@ Each rule contributes points. All accumulate via `threatEngine.addThreat(points,
 - **Warning banner** (`warningBanner.js`): bottom-right shield widget, click to dismiss
 - **Danger overlay** (`dangerOverlay.js`): full-page block at score ≥ 100, "Proceed Anyway" button
 - **Extension icon**: green/yellow/orange/red per threat level, orange while scanning
-- **Screenshot capture**: triggered at score ≥ 50 via `CAPTURE_THREAT` message
+- **Screenshot capture**: two‑path fallback — pre‑nav scanner captures phishing page before redirect; if that fails, CAPTURE_THREAT from warning page captures the warning page itself
 
 ## Background worker
 - Pre-navigation scan checks URL before page loads
 - Sets icon states (scanning orange → final color)
-- Captures screenshots (max 10, dedup by URL within 5 min, 600ms delay)
+- Captures screenshots (max 10, dedup by URL within 5 min, correct async/await flow)
 - `importScripts` loads `rules/homoglyph.js` and `rules/constants.js` for worker access
 
 ## VirusTotal integration
@@ -65,4 +65,5 @@ Design gap: pure homoglyph domains that fully normalize to a brand (e.g. "paypa1
 - All severity maps populated with `Critical`
 - `typosquatting.js` references fixed (non-existent globals → existing ones)
 - Ponytail cuts: iconMap shrunk, fromTab dead metadata deleted, skipPrefixes → regex
+- Fixed screenshot capture (was passing tabId as windowId to `captureVisibleTab`; added fallback for extension‑page capture)
 - 118 tests covering all rule files, threat engine, and edge cases

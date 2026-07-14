@@ -12,36 +12,45 @@ importScripts('rules/homoglyph.js', 'rules/constants.js');
 chrome.runtime.onMessage.addListener((message, sender) => {
 
   if (message.type === "CAPTURE_THREAT") {
-    setTimeout(() => {
-      const tab = sender?.tab;
-      if (!tab?.id) return;
+    (async () => {
+      try {
+        const tab = sender?.tab;
+        if (!tab?.id) return;
 
-      chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" }, screenshotUrl => {
-        if (chrome.runtime.lastError) return;
+        let screenshotUrl;
+        try {
+          screenshotUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+        } catch {
+          // Fallback: may fail on chrome-extension:// pages in MV3.
+          // Try without windowId (uses current window) or try after a brief
+          // tick to let the warning page finish rendering.
+          screenshotUrl = await chrome.tabs.captureVisibleTab({ format: "png" });
+        }
 
-        chrome.storage.local.get(["shadowlinkScreenshots"], data => {
-          const screenshots = data.shadowlinkScreenshots || [];
+        const data = await chrome.storage.local.get(["shadowlinkScreenshots"]);
+        const screenshots = data.shadowlinkScreenshots || [];
 
-          const now = Date.now();
-          const dup = screenshots.some(s =>
-            s.url === (message.url || sender?.tab?.url) &&
-            (now - new Date(s.timestampRaw || 0)) < 300000
-          );
-          if (dup) return;
+        const now = Date.now();
+        const url = message.url || tab.url || "";
+        const dup = screenshots.some(s =>
+          s.url === url && (now - new Date(s.timestampRaw || 0)) < 300000
+        );
+        if (dup) return;
 
-          screenshots.unshift({
-            url: message.url || sender?.tab?.url || "",
-            timestamp: new Date().toLocaleString(),
-            timestampRaw: now,
-            screenshot: screenshotUrl
-          });
-
-          chrome.storage.local.set({
-            shadowlinkScreenshots: screenshots.slice(0, 10)
-          });
+        screenshots.unshift({
+          url,
+          timestamp: new Date().toLocaleString(),
+          timestampRaw: now,
+          screenshot: screenshotUrl
         });
-      });
-    }, 600);
+
+        await chrome.storage.local.set({
+          shadowlinkScreenshots: screenshots.slice(0, 10)
+        });
+      } catch (err) {
+        console.warn("[ShadowLink] Screenshot capture failed:", err);
+      }
+    })();
     return;
   }
 
@@ -382,121 +391,39 @@ if (
       const blockedUrl =
 
         encodeURIComponent(url);
+
 /*
   Save blocked threat
 */
-
-chrome.storage.local.get(
-
-  ["shadowlinkHistory"],
-
-  data => {
-
-   const history =
-  data.shadowlinkHistory || [];
-
-    history.unshift({
-
+const historyData = await chrome.storage.local.get(["shadowlinkHistory"]);
+const history = historyData.shadowlinkHistory || [];
+history.unshift({
   url,
-
   score,
-
   indicators,
-
-  threatLevel:
-  score >= 75
-  ? "Dangerous"
-
-  : score >= 50
-  ? "Critical"
-
-  : score >= 25
-  ? "Suspicious"
-
-  : "Safe",
-
-  timestamp:
-    new Date()
-      .toLocaleString()
+  threatLevel: score >= 75 ? "Dangerous" : score >= 50 ? "Critical" : score >= 25 ? "Suspicious" : "Safe",
+  timestamp: new Date().toLocaleString()
 });
-
-    chrome.storage.local.set({
-
-  shadowlinkHistory:
-    history.slice(0, 100)
-});
-  }
-);
+await chrome.storage.local.set({ shadowlinkHistory: history.slice(0, 100) });
 
 /*
   Save timeline event
 */
 
-chrome.storage.local.get(
-
-  ["shadowlinkTimeline"],
-
-  data => {
-
-    const timeline =
-      data.shadowlinkTimeline || [];
-
-    const threatLevel =
-
-  score >= 75
-    ? "Dangerous"
-
-    : score >= 50
-    ? "Critical"
-
-    : score >= 25
-    ? "Suspicious"
-
-    : "Safe";
-
+const tlData = await chrome.storage.local.get(["shadowlinkTimeline"]);
+const timeline = tlData.shadowlinkTimeline || [];
+const threatLevel = score >= 75 ? "Dangerous" : score >= 50 ? "Critical" : score >= 25 ? "Suspicious" : "Safe";
 timeline.unshift({
-
-  title:
-    threatLevel,
-
-  category:
-    threatLevel,
-
+  title: threatLevel,
+  category: threatLevel,
   threatLevel,
-
   url,
-
-  hostname:
-    (() => {
-
-      try {
-
-        return new URL(url)
-          .hostname;
-
-      } catch {
-
-        return url;
-      }
-
-    })(),
-
+  hostname: (() => { try { return new URL(url).hostname; } catch { return url; } })(),
   score,
-
   indicators,
-
-  timestamp:
-    new Date()
-      .toLocaleString()
+  timestamp: new Date().toLocaleString()
 });
-
-    chrome.storage.local.set({
-
-      shadowlinkTimeline:
-        timeline.slice(0, 100)
-    });
-  }
-);
+await chrome.storage.local.set({ shadowlinkTimeline: timeline.slice(0, 100) });
 
       chrome.tabs.update(
 

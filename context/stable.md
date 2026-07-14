@@ -3,7 +3,7 @@
 All existing features are stabilized. No new functionality has been added — only fixes, dead code removal, and guardrails.
 
 ## What was done
-- Fixed unreliable screenshot capture (dedup, max 10, correct API)
+- Fixed screenshot capture: `captureVisibleTab` was called with `tabId` instead of `windowId` (silent failure). Now resolves `windowId` via `chrome.tabs.get()` first. Fallback attempts capture without `windowId` for `chrome-extension://` pages.
 - Fixed inconsistent icon updates (UPDATE_ICON message for scanning state)
 - Fixed VT data missing on first visit (Phase-1/2 split with `vtPending` flag)
 - Fixed broken typosquatting detection (non-existent global references)

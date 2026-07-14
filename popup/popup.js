@@ -689,6 +689,30 @@ if (data.vtPending) {
       if (data?.protocol) {
         setProtocolBadge(data.protocol === "https:");
       }
+
+      // Capture screenshot popup-side (popup always has activeTab permission,
+      // unlike the background service worker which never has it for these events).
+      if (data && (data.threatLevel === "Dangerous" || data.threatLevel === "Critical")) {
+        (async () => {
+          try {
+            const shot = await chrome.tabs.captureVisibleTab({ format: "png" });
+            const { shadowlinkScreenshots } = await chrome.storage.local.get(["shadowlinkScreenshots"]);
+            const list = shadowlinkScreenshots || [];
+            list.unshift({
+              url: analyzedUrl,
+              timestamp: new Date().toLocaleString(),
+              timestampRaw: Date.now(),
+              screenshot: shot
+            });
+            await chrome.storage.local.set({ shadowlinkScreenshots: list.slice(0, 10) });
+            // Re-render so the popup shows the captured evidence immediately
+            const { shadowlinkScreenshots: updated } = await chrome.storage.local.get(["shadowlinkScreenshots"]);
+            renderScreenshots(updated || []);
+          } catch (e) {
+            console.warn("[ShadowLink] Popup screenshot capture failed:", e);
+          }
+        })();
+      }
     },
   );
 });
